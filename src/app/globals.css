@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  color: #000000;
+  background-color: #ffffff;
+  font-family: var(--font-plus-jakarta-sans), sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: var(--font-space-grotesk), sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* Custom Neo-Brutalism Utilities */
+@layer components {
+  .neo-box {
+    @apply border-2 border-black rounded-lg shadow-neo bg-white;
+  }
+
+  .neo-box-interactive {
+    @apply border-2 border-black rounded-lg shadow-neo bg-white transition-all duration-150 
+           hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-neo-hover 
+           active:translate-x-0.5 active:translate-y-0.5 active:shadow-neo-active;
+  }
+
+  .neo-btn {
+    @apply inline-flex items-center justify-center border-2 border-black rounded-lg shadow-neo 
+           font-bold px-4 py-2.5 text-sm transition-all duration-150 
+           hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-neo-hover 
+           active:translate-x-0.5 active:translate-y-0.5 active:shadow-neo-active 
+           disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .neo-btn-lime {
+    @apply neo-btn bg-neo-lime text-black hover:bg-neo-limeLight;
+  }
+
+  .neo-btn-blue {
+    @apply neo-btn bg-neo-blue text-white hover:bg-neo-blueDark;
+  }
+
+  .neo-btn-dark {
+    @apply neo-btn bg-neo-navy text-white hover:bg-black;
+  }
+
+  .neo-btn-white {
+    @apply neo-btn bg-white text-black hover:bg-slate-50;
+  }
+
+  .neo-tag {
+    @apply inline-flex items-center font-mono text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 border border-black rounded shadow-[1px_1px_0px_#000];
+  }
+
+  .neo-pill {
+    @apply inline-flex items-center font-mono text-xs font-black uppercase tracking-wider px-3.5 py-1 border-2 border-black rounded-full shadow-[2px_2px_0px_#000];
+  }
+}
+
+/* Ticker marquee animation */
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 25s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
