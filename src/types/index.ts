@@ -62,3 +62,28 @@ export interface HardwareServiceOrderInput {
   acceptsDataDisclaimer: boolean;
 }
 
+export interface AdminOrder {
+  id: string;
+  order_code: string;
+  order_type: OrderType;
+  customer_name: string;
+  customer_contact: string;
+  service_category: string | null;
+  format_output: string | null;
+  instructions: string;
+  deadline: string;
+  include_learn_package: boolean;
+  hardware_details?: {
+    laptop_model?: string;
+    issue?: string;
+    delivery_method?: string;
+    accepts_data_disclaimer?: boolean;
+  };
+  status: OrderStatus;
+  total_price: number | null;
+  internal_notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+
