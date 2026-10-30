@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Laptop, FileCode, Send, Check } from "lucide-react";
+import { Laptop, FileCode, Send, Check, Loader2, AlertCircle } from "lucide-react";
+import {
+  createDigitalTaskOrder,
+  createHardwareServiceOrder,
+} from "@/app/actions/orders";
 
 export function OrderGeneratorSection() {
   const [orderType, setOrderType] = useState<"task" | "hardware">("task");
@@ -26,13 +30,19 @@ export function OrderGeneratorSection() {
     acceptsDataDisclaimer: true,
   });
 
+  const [registeredOrderCode, setRegisteredOrderCode] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   // Generate WhatsApp message based on active tab matching Figma format
-  const generateMessageText = () => {
+  const generateMessageText = (code?: string) => {
+    const orderIdLine = code ? `• ID Pesanan  : ${code}\n` : "";
+
     if (orderType === "task") {
       return (
         `Halo Tim bantuiin.id, saya mau order bantuan tugas/proyek:\n\n` +
+        orderIdLine +
         `• Nama Klien  : ${taskForm.name || "..."}\n` +
         `• Kategori    : ${taskForm.category}\n` +
         `• Format File : ${taskForm.outputFormat || "..."}\n` +
@@ -48,6 +58,7 @@ export function OrderGeneratorSection() {
     } else {
       return (
         `Halo Tim bantuiin.id, saya mau order bantuan servis laptop:\n\n` +
+        orderIdLine +
         `• Nama Klien  : ${hardwareForm.name || "..."}\n` +
         `• Kendala/Item: ${hardwareForm.issue}\n` +
         `• Tipe Laptop : ${hardwareForm.laptopModel || "..."}\n` +
@@ -61,16 +72,66 @@ export function OrderGeneratorSection() {
     }
   };
 
-  const currentMessage = generateMessageText();
+  const currentMessage = generateMessageText(registeredOrderCode || undefined);
 
-  const handleActionWhatsApp = () => {
-    navigator.clipboard.writeText(currentMessage);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleActionWhatsApp = async () => {
+    setErrorMessage(null);
+    setIsSubmitting(true);
 
-    const adminPhone = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP || "6282100000000";
-    const encoded = encodeURIComponent(currentMessage);
-    window.open(`https://wa.me/${adminPhone}?text=${encoded}`, "_blank");
+    try {
+      let result;
+      if (orderType === "task") {
+        result = await createDigitalTaskOrder({
+          name: taskForm.name,
+          category: taskForm.category,
+          outputFormat: taskForm.outputFormat,
+          instructions: taskForm.instructions,
+          deadline: taskForm.deadline,
+          includeLearnPackage: taskForm.includeLearnPackage,
+        });
+      } else {
+        result = await createHardwareServiceOrder({
+          name: hardwareForm.name,
+          issue: hardwareForm.issue,
+          laptopModel: hardwareForm.laptopModel,
+          deliveryMethod: hardwareForm.deliveryMethod,
+          expectedCompletion: hardwareForm.expectedCompletion,
+          acceptsDataDisclaimer: hardwareForm.acceptsDataDisclaimer,
+        });
+      }
+
+      if (!result.success) {
+        setErrorMessage(result.error || "Gagal memvalidasi pesanan");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const generatedCode = result.orderCode;
+      if (generatedCode) {
+        setRegisteredOrderCode(generatedCode);
+      }
+
+      // Build message with order code
+      const finalMsg = generateMessageText(generatedCode);
+
+      // Copy text to clipboard
+      navigator.clipboard.writeText(finalMsg);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+
+      // Open WhatsApp
+      const adminPhone = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP || "6282100000000";
+      const encoded = encodeURIComponent(finalMsg);
+      window.open(`https://wa.me/${adminPhone}?text=${encoded}`, "_blank");
+    } catch (err) {
+      console.error("Order submit error:", err);
+      // Fallback: still open WhatsApp
+      const finalMsg = generateMessageText();
+      const adminPhone = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP || "6282100000000";
+      window.open(`https://wa.me/${adminPhone}?text=${encodeURIComponent(finalMsg)}`, "_blank");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -102,7 +163,11 @@ export function OrderGeneratorSection() {
             <div className="flex flex-wrap gap-2 mb-8">
               <button
                 type="button"
-                onClick={() => setOrderType("task")}
+                onClick={() => {
+                  setOrderType("task");
+                  setRegisteredOrderCode(null);
+                  setErrorMessage(null);
+                }}
                 className={`neo-btn text-xs sm:text-sm font-black flex items-center gap-2 ${
                   orderType === "task"
                     ? "bg-neo-lime text-black shadow-neo"
@@ -115,7 +180,11 @@ export function OrderGeneratorSection() {
 
               <button
                 type="button"
-                onClick={() => setOrderType("hardware")}
+                onClick={() => {
+                  setOrderType("hardware");
+                  setRegisteredOrderCode(null);
+                  setErrorMessage(null);
+                }}
                 className={`neo-btn text-xs sm:text-sm font-black flex items-center gap-2 ${
                   orderType === "hardware"
                     ? "bg-neo-lime text-black shadow-neo"
@@ -127,6 +196,30 @@ export function OrderGeneratorSection() {
               </button>
             </div>
 
+            {/* Error Message Alert */}
+            {errorMessage && (
+              <div className="mb-6 p-4 border-2 border-black rounded-lg bg-red-100 text-red-900 flex items-center gap-3 text-xs sm:text-sm font-bold shadow-neo-sm">
+                <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
+            {/* Registered Order Code Banner */}
+            {registeredOrderCode && (
+              <div className="mb-6 p-4 border-2 border-black rounded-lg bg-emerald-100 text-emerald-950 flex items-center justify-between gap-3 text-xs sm:text-sm font-bold shadow-neo-sm">
+                <div className="flex items-center gap-2">
+                  <Check className="h-5 w-5 text-emerald-700" />
+                  <span>Pesanan berhasil tercatat di sistem:</span>
+                  <span className="font-mono bg-white px-2 py-0.5 border border-black rounded font-black text-black">
+                    {registeredOrderCode}
+                  </span>
+                </div>
+                <span className="neo-tag bg-neo-lime text-black font-mono text-[10px]">
+                  TERSIMPAN
+                </span>
+              </div>
+            )}
+
             {/* 2-Column Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               
@@ -136,7 +229,7 @@ export function OrderGeneratorSection() {
                   <>
                     <div>
                       <label className="block text-xs font-bold text-slate-800 mb-1">
-                        Nama Panggilan / Alias
+                        Nama Panggilan / Alias *
                       </label>
                       <input
                         type="text"
@@ -149,7 +242,7 @@ export function OrderGeneratorSection() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-slate-800 mb-1">
-                          Kategori Tugas
+                          Kategori Tugas *
                         </label>
                         <select
                           value={taskForm.category}
@@ -170,7 +263,7 @@ export function OrderGeneratorSection() {
 
                       <div>
                         <label className="block text-xs font-bold text-slate-800 mb-1">
-                          Format Output yang Diminta
+                          Format Output yang Diminta *
                         </label>
                         <input
                           type="text"
@@ -185,7 +278,7 @@ export function OrderGeneratorSection() {
 
                     <div>
                       <label className="block text-xs font-bold text-slate-800 mb-1">
-                        Detail Instruksi / Deskripsi Singkat
+                        Detail Instruksi / Deskripsi Singkat *
                       </label>
                       <textarea
                         rows={3}
@@ -199,7 +292,7 @@ export function OrderGeneratorSection() {
 
                     <div>
                       <label className="block text-xs font-bold text-slate-800 mb-1">
-                        Tenggat Waktu / Deadline Pasti
+                        Tenggat Waktu / Deadline Pasti *
                       </label>
                       <input
                         type="text"
@@ -243,7 +336,7 @@ export function OrderGeneratorSection() {
                   <>
                     <div>
                       <label className="block text-xs font-bold text-slate-800 mb-1">
-                        Nama Panggilan / Alias
+                        Nama Panggilan / Alias *
                       </label>
                       <input
                         type="text"
@@ -258,7 +351,7 @@ export function OrderGeneratorSection() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-slate-800 mb-1">
-                          Kendala / Layanan yang Dibutuhkan
+                          Kendala / Layanan yang Dibutuhkan *
                         </label>
                         <select
                           value={hardwareForm.issue}
@@ -276,7 +369,7 @@ export function OrderGeneratorSection() {
 
                       <div>
                         <label className="block text-xs font-bold text-slate-800 mb-1">
-                          Tipe / Merk Laptop
+                          Tipe / Merk Laptop *
                         </label>
                         <input
                           type="text"
@@ -295,7 +388,7 @@ export function OrderGeneratorSection() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-slate-800 mb-1">
-                          Metode Penyerahan
+                          Metode Penyerahan *
                         </label>
                         <select
                           value={hardwareForm.deliveryMethod}
@@ -314,7 +407,7 @@ export function OrderGeneratorSection() {
 
                       <div>
                         <label className="block text-xs font-bold text-slate-800 mb-1">
-                          Tenggat Waktu / Selesai Pasti
+                          Tenggat Waktu / Selesai Pasti *
                         </label>
                         <input
                           type="text"
@@ -329,6 +422,24 @@ export function OrderGeneratorSection() {
                         />
                       </div>
                     </div>
+
+                    {/* Disclaimer Checkbox */}
+                    <div className="p-3.5 border-2 border-black rounded-lg bg-amber-50 flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={hardwareForm.acceptsDataDisclaimer}
+                        onChange={(e) =>
+                          setHardwareForm({
+                            ...hardwareForm,
+                            acceptsDataDisclaimer: e.target.checked,
+                          })
+                        }
+                        className="mt-0.5 h-4 w-4 accent-black border-2 border-black rounded cursor-pointer shrink-0"
+                      />
+                      <p className="text-[11px] text-amber-950 font-medium leading-relaxed">
+                        <strong>Disclaimer Kehilangan Data:</strong> Klien wajib membackup data penting secara mandiri sebelum servis. Bantuiin.id tidak bertanggung jawab atas data non-backup.
+                      </p>
+                    </div>
                   </>
                 )}
               </div>
@@ -342,7 +453,7 @@ export function OrderGeneratorSection() {
                   </span>
                   <span className="flex items-center gap-1.5 text-[11px] font-mono text-emerald-400">
                     <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
-                    <span>Siap Kirim</span>
+                    <span>{registeredOrderCode ? "Tercatat di Database" : "Siap Kirim"}</span>
                   </span>
                 </div>
 
@@ -351,16 +462,22 @@ export function OrderGeneratorSection() {
                   {currentMessage}
                 </div>
 
-                {/* Button Salin & Buka WhatsApp Resmi */}
+                {/* Button Salin & Buka WhatsApp Resmi with Server Action */}
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={handleActionWhatsApp}
-                  className="w-full neo-btn-lime py-3.5 text-sm font-black flex items-center justify-center gap-2 group"
+                  className="w-full neo-btn-lime py-3.5 text-sm font-black flex items-center justify-center gap-2 group disabled:opacity-70"
                 >
-                  {copied ? (
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin text-black" />
+                      <span>Mencatat Pesanan &amp; Membuka WhatsApp...</span>
+                    </>
+                  ) : copied ? (
                     <>
                       <Check className="h-4 w-4" />
-                      <span>Format Tersalin! Membuka WhatsApp...</span>
+                      <span>Format Tersalin! Mengalihkan ke WhatsApp...</span>
                     </>
                   ) : (
                     <>
