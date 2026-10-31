@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getAdminOrders } from "@/app/actions/admin-orders";
 import { formatRupiah } from "@/lib/utils";
+
+export const dynamic = "force-dynamic";
 import {
   Inbox,
   Clock,

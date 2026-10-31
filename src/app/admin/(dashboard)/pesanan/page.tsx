@@ -1,6 +1,8 @@
 import { getAdminOrders } from "@/app/actions/admin-orders";
 import { OrdersManager } from "@/components/admin/OrdersManager";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminPesananPage() {
   const orders = await getAdminOrders();
 
