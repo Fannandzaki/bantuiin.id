@@ -6,6 +6,9 @@ import { WorkflowSection } from "@/components/home/WorkflowSection";
 import { OrderGeneratorSection } from "@/components/home/OrderGeneratorSection";
 import { TermsAndReferralSection } from "@/components/home/TermsAndReferralSection";
 import { Footer } from "@/components/layout/Footer";
+import { getDynamicServices } from "@/app/actions/services";
+
+export const dynamic = "force-dynamic";
 import {
   Send,
   Calculator,
@@ -17,7 +20,9 @@ import {
   Award,
 } from "lucide-react";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const dynamicServices = await getDynamicServices();
+
   return (
     <div className="min-h-screen bg-white font-body">
       {/* 1. Header Navigation */}
@@ -207,7 +212,7 @@ export default function HomePage() {
       <PillarsSection />
 
       {/* 5. Katalog Harga & Estimasi Pengerjaan */}
-      <PricingCatalogSection />
+      <PricingCatalogSection initialServices={dynamicServices} />
 
       {/* 6. 5 Langkah Pasti Tanpa Drama (Workflow) */}
       <WorkflowSection />

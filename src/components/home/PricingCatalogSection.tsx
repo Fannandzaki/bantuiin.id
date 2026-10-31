@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Zap } from "lucide-react";
+import { DbService } from "@/app/actions/services";
 
 type FilterTab = "all" | "coding" | "design" | "documents" | "hardware";
 
@@ -18,77 +19,138 @@ interface CatalogItem {
   priceColor: string;
 }
 
-export function PricingCatalogSection() {
+interface PricingCatalogSectionProps {
+  initialServices?: DbService[];
+}
+
+export function PricingCatalogSection({ initialServices }: PricingCatalogSectionProps) {
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
 
-  const catalogItems: CatalogItem[] = [
-    {
-      id: "web-landing",
-      category: "coding",
-      badge: "CODING",
-      badgeColor: "bg-blue-100 text-neo-blue",
-      duration: "Est: 1 – 3 Hari",
-      title: "Web Statis Landing Page (Tailwind / Bootstrap)",
-      desc: "Satu halaman responsif, mobile-friendly, clean HTML/CSS/JS siap hosting.",
-      price: "Rp75.000 – Rp175.000",
-      priceColor: "text-neo-blue",
-    },
-    {
-      id: "web-crud",
-      category: "coding",
-      badge: "CODING & DB",
-      badgeColor: "bg-blue-100 text-neo-blue",
-      duration: "Est: 2 – 5 Hari",
-      title: "Aplikasi CRUD Web (Laravel / PHP Native)",
-      desc: "Sistem database MySQL, autentikasi user, kelola data master, export PDF/Excel.",
-      price: "Rp200.000 – Rp450.000",
-      priceColor: "text-neo-blue",
-    },
-    {
-      id: "slide-ppt",
-      category: "design",
-      badge: "DESAIN",
-      badgeColor: "bg-amber-100 text-amber-800",
-      duration: "Est: 1 – 2 Hari",
-      title: "Slide Presentasi Sidang & PPT Tugas",
-      desc: "10–20 slide berkonsep modern, tipografi rapi, animasi clean, visualisasi data.",
-      price: "Rp50.000 – Rp120.000",
-      priceColor: "text-amber-600",
-    },
-    {
-      id: "uiux-figma",
-      category: "design",
-      badge: "UI/UX",
-      badgeColor: "bg-amber-100 text-amber-800",
-      duration: "Est: 2 – 4 Hari",
-      title: "Desain UI/UX Figma Mobile / Web (Prototype)",
-      desc: "High-Fidelity screens, design token color & font, komponen terstruktur, clickable link.",
-      price: "Rp150.000 – Rp350.000",
-      priceColor: "text-amber-600",
-    },
-    {
-      id: "doc-word",
-      category: "documents",
-      badge: "DOKUMEN",
-      badgeColor: "bg-lime-100 text-lime-900",
-      duration: "Est: 1 – 2 Hari",
-      title: "Perapihan Format Word + Sitasi Mendeley",
-      desc: "Daftar isi/tabel/gambar otomatis, perapihan margin bab & sitasi APA/IEEE otomatis.",
-      price: "Rp35.000 – Rp90.000",
-      priceColor: "text-emerald-700",
-    },
-    {
-      id: "hw-cleaning",
-      category: "hardware",
-      badge: "HARDWARE",
-      badgeColor: "bg-blue-100 text-neo-blue",
-      duration: "Est: 2 – 4 Jam",
-      title: "Cleaning Fan + Repaste Thermal Paste",
-      desc: "Bongkar total debu fan heatsink, ganti pasta Arctic/Thermal Grizzly, turun hingga 15°C.",
-      price: "Rp60.000 – Rp120.000",
-      priceColor: "text-neo-blue",
-    },
-  ];
+  const getPriceColor = (category: string) => {
+    switch (category) {
+      case "coding":
+        return "text-neo-blue";
+      case "design":
+        return "text-amber-600";
+      case "documents":
+        return "text-emerald-700";
+      case "hardware":
+        return "text-neo-blue";
+      default:
+        return "text-neo-blueDark";
+    }
+  };
+
+  const getBadgeColor = (category: string) => {
+    switch (category) {
+      case "coding":
+        return "bg-blue-100 text-neo-blue";
+      case "design":
+        return "bg-amber-100 text-amber-800";
+      case "documents":
+        return "bg-lime-100 text-lime-900";
+      case "hardware":
+        return "bg-blue-100 text-neo-blue";
+      default:
+        return "bg-slate-100 text-slate-800";
+    }
+  };
+
+  const getBadgeLabel = (category: string) => {
+    switch (category) {
+      case "coding":
+        return "CODING";
+      case "design":
+        return "DESAIN";
+      case "documents":
+        return "DOKUMEN";
+      case "hardware":
+        return "HARDWARE";
+      default:
+        return "LAYANAN";
+    }
+  };
+
+  const catalogItems: CatalogItem[] = initialServices && initialServices.length > 0
+    ? initialServices.map((srv) => ({
+        id: srv.id,
+        category: srv.category_id as FilterTab,
+        badge: srv.badge_label || getBadgeLabel(srv.category_id),
+        badgeColor: srv.badge_color || getBadgeColor(srv.category_id),
+        duration: srv.estimated_duration,
+        title: srv.title,
+        desc: srv.description,
+        price: srv.price_range_text,
+        priceColor: getPriceColor(srv.category_id),
+      }))
+    : [
+        {
+          id: "web-landing",
+          category: "coding",
+          badge: "CODING",
+          badgeColor: "bg-blue-100 text-neo-blue",
+          duration: "Est: 1 – 3 Hari",
+          title: "Web Statis Landing Page (Tailwind / Bootstrap)",
+          desc: "Satu halaman responsif, mobile-friendly, clean HTML/CSS/JS siap hosting.",
+          price: "Rp75.000 – Rp175.000",
+          priceColor: "text-neo-blue",
+        },
+        {
+          id: "web-crud",
+          category: "coding",
+          badge: "CODING & DB",
+          badgeColor: "bg-blue-100 text-neo-blue",
+          duration: "Est: 2 – 5 Hari",
+          title: "Aplikasi CRUD Web (Laravel / PHP Native)",
+          desc: "Sistem database MySQL, autentikasi user, kelola data master, export PDF/Excel.",
+          price: "Rp200.000 – Rp450.000",
+          priceColor: "text-neo-blue",
+        },
+        {
+          id: "slide-ppt",
+          category: "design",
+          badge: "DESAIN",
+          badgeColor: "bg-amber-100 text-amber-800",
+          duration: "Est: 1 – 2 Hari",
+          title: "Slide Presentasi Sidang & PPT Tugas",
+          desc: "10–20 slide berkonsep modern, tipografi rapi, animasi clean, visualisasi data.",
+          price: "Rp50.000 – Rp120.000",
+          priceColor: "text-amber-600",
+        },
+        {
+          id: "uiux-figma",
+          category: "design",
+          badge: "UI/UX",
+          badgeColor: "bg-amber-100 text-amber-800",
+          duration: "Est: 2 – 4 Hari",
+          title: "Desain UI/UX Figma Mobile / Web (Prototype)",
+          desc: "High-Fidelity screens, design token color & font, komponen terstruktur, clickable link.",
+          price: "Rp150.000 – Rp350.000",
+          priceColor: "text-amber-600",
+        },
+        {
+          id: "doc-word",
+          category: "documents",
+          badge: "DOKUMEN",
+          badgeColor: "bg-lime-100 text-lime-900",
+          duration: "Est: 1 – 2 Hari",
+          title: "Perapihan Format Word + Sitasi Mendeley",
+          desc: "Daftar isi/tabel/gambar otomatis, perapihan margin bab & sitasi APA/IEEE otomatis.",
+          price: "Rp35.000 – Rp90.000",
+          priceColor: "text-emerald-700",
+        },
+        {
+          id: "hw-cleaning",
+          category: "hardware",
+          badge: "HARDWARE",
+          badgeColor: "bg-blue-100 text-neo-blue",
+          duration: "Est: 2 – 4 Jam",
+          title: "Cleaning Fan + Repaste Thermal Paste",
+          desc: "Bongkar total debu fan heatsink, ganti pasta Arctic/Thermal Grizzly, turun hingga 15°C.",
+          price: "Rp60.000 – Rp120.000",
+          priceColor: "text-neo-blue",
+        },
+      ];
 
   const filteredItems =
     activeTab === "all"
@@ -141,7 +203,7 @@ export function PricingCatalogSection() {
           })}
         </div>
 
-        {/* 6 Cards 3x2 Grid matching Figma */}
+        {/* Dynamic Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredItems.map((item) => (
             <div
