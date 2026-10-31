@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BrandLogo } from "./BrandLogo";
-import { Zap } from "lucide-react";
+import { Zap, ShieldCheck } from "lucide-react";
 
 export function Navbar() {
   return (
@@ -37,8 +37,16 @@ export function Navbar() {
           </Link>
         </nav>
 
-        {/* CTA Button */}
-        <div className="flex items-center gap-3">
+        {/* CTA Button & Admin Portal Access */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Link
+            href="/admin"
+            className="neo-btn px-3 py-2 text-xs font-mono font-bold text-slate-900 bg-slate-100 hover:bg-neo-yellow flex items-center gap-1.5 transition-colors"
+            title="Masuk ke Portal Admin"
+          >
+            <ShieldCheck className="h-4 w-4 text-slate-800" />
+            <span className="hidden sm:inline">Admin</span>
+          </Link>
           <Link
             href="#format-pemesanan"
             className="neo-btn-lime px-4 py-2.5 text-xs sm:text-sm font-black flex items-center gap-1.5"
