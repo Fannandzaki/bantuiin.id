@@ -156,10 +156,6 @@ export function Footer() {
             <Link href="#aturan-garansi" className="hover:underline">
               Kebijakan Privasi
             </Link>
-            <span>|</span>
-            <Link href="/admin" className="hover:underline text-neo-blue flex items-center gap-1">
-              <span>Portal Admin</span>
-            </Link>
           </div>
         </div>
       </div>
