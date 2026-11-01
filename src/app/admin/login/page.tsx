@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BrandLogo } from "@/components/layout/BrandLogo";
@@ -12,13 +12,10 @@ import {
   KeyRound,
   AlertCircle,
   Loader2,
-  ChevronDown,
-  Info,
 } from "lucide-react";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [showSetupGuide, setShowSetupGuide] = useState(false);
 
   const [state, formAction, isPending] = useActionState(
     async (prevState: AuthResult | null, formData: FormData) => {
@@ -148,47 +145,6 @@ export default function AdminLoginPage() {
             </Link>
           </div>
         </div>
-
-        {/* Collapsible Safe Admin Setup Guide (Visible in development only to prevent information disclosure in production) */}
-        {process.env.NODE_ENV === "development" && (
-          <div className="mt-4 neo-box p-4 bg-white shadow-neo-sm">
-            <button
-              type="button"
-              onClick={() => setShowSetupGuide(!showSetupGuide)}
-              className="w-full flex items-center justify-between text-left text-xs font-black text-slate-800 cursor-pointer"
-            >
-              <span className="flex items-center gap-1.5">
-                <Info className="h-4 w-4 text-neo-blue" />
-                <span>Panduan Pembuatan Akun Admin (Dev Mode)</span>
-              </span>
-              <ChevronDown
-                className={`h-4 w-4 transition-transform ${
-                  showSetupGuide ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-
-            {showSetupGuide && (
-              <div className="mt-3 pt-3 border-t border-slate-200 text-xs text-slate-700 font-medium space-y-2 leading-relaxed">
-                <p>
-                  Sesuai standar keamanan, akun admin <strong>tidak di-hardcode</strong> ke dalam source code. Untuk membuat akun admin pertama kali:
-                </p>
-                <ol className="list-decimal pl-4 space-y-1 text-slate-800 font-mono text-[11px]">
-                  <li>Buka Dashboard Supabase Anda &gt; menu <strong>Authentication &gt; Users</strong>.</li>
-                  <li>Klik <strong>Add User &gt; Create User</strong> dengan email &amp; kata sandi yang Anda inginkan.</li>
-                  <li>
-                    Buka <strong>SQL Editor</strong> dan jalankan query untuk memberikan hak admin:
-                    <div className="p-2 bg-slate-900 text-slate-200 rounded mt-1 overflow-x-auto text-[10px]">
-                      INSERT INTO public.profiles (id, full_name, email, role)<br />
-                      VALUES (&apos;&lt;USER_UUID_FROM_AUTH&gt;&apos;, &apos;Super Admin&apos;, &apos;email@anda.com&apos;, &apos;admin&apos;)<br />
-                      ON CONFLICT (id) DO UPDATE SET role = &apos;admin&apos;;
-                    </div>
-                  </li>
-                </ol>
-              </div>
-            )}
-          </div>
-        )}
 
       </div>
 
