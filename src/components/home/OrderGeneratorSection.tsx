@@ -120,14 +120,20 @@ export function OrderGeneratorSection() {
       setTimeout(() => setCopied(false), 3000);
 
       // Open WhatsApp
-      const adminPhone = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP || "6282100000000";
+      const adminPhone =
+        process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ||
+        process.env.NEXT_PUBLIC_ADMIN_WHATSAPP ||
+        "6281234567890";
       const encoded = encodeURIComponent(finalMsg);
       window.open(`https://wa.me/${adminPhone}?text=${encoded}`, "_blank");
     } catch (err) {
       console.error("Order submit error:", err);
       // Fallback: still open WhatsApp
       const finalMsg = generateMessageText();
-      const adminPhone = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP || "6282100000000";
+      const adminPhone =
+        process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ||
+        process.env.NEXT_PUBLIC_ADMIN_WHATSAPP ||
+        "6281234567890";
       window.open(`https://wa.me/${adminPhone}?text=${encodeURIComponent(finalMsg)}`, "_blank");
     } finally {
       setIsSubmitting(false);

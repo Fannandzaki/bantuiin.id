@@ -7,6 +7,8 @@ import {
   type DigitalTaskOrderValues,
   type HardwareServiceOrderValues,
 } from "@/lib/validations/order";
+import { headers } from "next/headers";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 // Generate unique human-readable order code (e.g., BANTU-2026-X8K9)
 function generateOrderCode(): string {
@@ -19,6 +21,15 @@ function generateOrderCode(): string {
   return `BANTU-${year}-${randomPart}`;
 }
 
+async function getClientIp(): Promise<string> {
+  const headerList = await headers();
+  return (
+    headerList.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    headerList.get("x-real-ip") ||
+    "client-anon"
+  );
+}
+
 export interface CreateOrderResult {
   success: boolean;
   orderCode?: string;
@@ -27,10 +38,21 @@ export interface CreateOrderResult {
 
 /**
  * Server action to record a digital task order.
+ * Protected by rate limiting (max 10 orders/min per IP) to prevent flooding.
  */
 export async function createDigitalTaskOrder(
   values: DigitalTaskOrderValues
 ): Promise<CreateOrderResult> {
+  const ip = await getClientIp();
+  const rateLimit = checkRateLimit(`task-order-${ip}`, 10, 60000);
+  if (!rateLimit.success) {
+    return {
+      success: false,
+      error:
+        "Terlalu banyak permintaan pemesanan dalam waktu singkat. Mohon tunggu 1 menit.",
+    };
+  }
+
   const validation = digitalTaskOrderSchema.safeParse(values);
   if (!validation.success) {
     return {
@@ -45,7 +67,6 @@ export async function createDigitalTaskOrder(
   try {
     const supabase = await createClient();
 
-    // Check if Supabase environment variables are real or placeholder
     const isConfigured =
       process.env.NEXT_PUBLIC_SUPABASE_URL &&
       !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder-id");
@@ -66,7 +87,7 @@ export async function createDigitalTaskOrder(
 
       if (error) {
         console.error("Supabase insert error (digital task):", error.message);
-        // We still return orderCode so the WhatsApp transaction isn't blocked
+        // Fallback: still return orderCode so the WhatsApp transaction isn't blocked
         return { success: true, orderCode };
       }
     }
@@ -77,7 +98,6 @@ export async function createDigitalTaskOrder(
     };
   } catch (err) {
     console.error("Unexpected error creating order:", err);
-    // Graceful fallback: return orderCode so user can still contact admin
     return {
       success: true,
       orderCode,
@@ -87,10 +107,21 @@ export async function createDigitalTaskOrder(
 
 /**
  * Server action to record a hardware service order.
+ * Protected by rate limiting (max 10 orders/min per IP).
  */
 export async function createHardwareServiceOrder(
   values: HardwareServiceOrderValues
 ): Promise<CreateOrderResult> {
+  const ip = await getClientIp();
+  const rateLimit = checkRateLimit(`hw-order-${ip}`, 10, 60000);
+  if (!rateLimit.success) {
+    return {
+      success: false,
+      error:
+        "Terlalu banyak permintaan pemesanan dalam waktu singkat. Mohon tunggu 1 menit.",
+    };
+  }
+
   const validation = hardwareServiceOrderSchema.safeParse(values);
   if (!validation.success) {
     return {
@@ -145,4 +176,3 @@ export async function createHardwareServiceOrder(
     };
   }
 }
-

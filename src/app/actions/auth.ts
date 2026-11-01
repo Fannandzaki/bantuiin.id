@@ -3,6 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Format email tidak valid" }),
@@ -17,12 +19,27 @@ export interface AuthResult {
 
 /**
  * Validates and logs in an admin user using Supabase Auth.
- * Adheres to SYSTEM_RULES: No hardcoded credentials.
+ * Protected by rate limiting (max 5 attempts/minute per IP) to prevent brute-force attacks.
  */
 export async function adminLogin(
   prevState: AuthResult | null,
   formData: FormData
 ): Promise<AuthResult> {
+  const headerList = await headers();
+  const clientIp =
+    headerList.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    headerList.get("x-real-ip") ||
+    "auth-client";
+
+  const rateLimit = checkRateLimit(`login-${clientIp}`, 5, 60000);
+  if (!rateLimit.success) {
+    return {
+      success: false,
+      error:
+        "Terlalu banyak percobaan login gagal. Mohon tunggu 1 menit sebelum mencoba lagi.",
+    };
+  }
+
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
@@ -102,45 +119,3 @@ export async function adminLogout(): Promise<{ success: boolean }> {
     return { success: false };
   }
 }
-
-/**
- * Check if current user is an authenticated admin/staff.
- */
-export async function getAdminUser() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const isSupabaseConfigured =
-    supabaseUrl && !supabaseUrl.includes("placeholder-id");
-
-  if (!isSupabaseConfigured) {
-    return null;
-  }
-
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) return null;
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("full_name, email, role")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile || (profile.role !== "admin" && profile.role !== "staff")) {
-      return null;
-    }
-
-    return {
-      id: user.id,
-      email: user.email,
-      name: profile.full_name,
-      role: profile.role,
-    };
-  } catch {
-    return null;
-  }
-}
-

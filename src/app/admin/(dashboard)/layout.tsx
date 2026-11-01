@@ -1,11 +1,21 @@
 import { ReactNode } from "react";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { verifyAdminSession } from "@/lib/auth/assert-admin";
+import { redirect } from "next/navigation";
 
-export default function AdminDashboardLayout({
+export const dynamic = "force-dynamic";
+
+export default async function AdminDashboardLayout({
   children,
 }: {
   children: ReactNode;
 }) {
+  const auth = await verifyAdminSession();
+
+  if (!auth.authorized) {
+    redirect("/admin/login?error=unauthorized");
+  }
+
   return (
     <div className="min-h-screen bg-neo-surface flex flex-col font-body">
       <AdminNav />
@@ -15,4 +25,3 @@ export default function AdminDashboardLayout({
     </div>
   );
 }
-

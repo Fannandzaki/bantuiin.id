@@ -1,8 +1,10 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import { revalidatePath } from "next/cache";
 import { SERVICE_ITEMS } from "@/data/services";
+import { verifyAdminSession } from "@/lib/auth/assert-admin";
 
 export interface DbService {
   id: string;
@@ -35,10 +37,11 @@ export interface ServiceInput {
 
 /**
  * Fetch active services for public website with fallback.
+ * Publicly accessible (anon).
  */
 export async function getDynamicServices(): Promise<DbService[]> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
     const { data, error } = await supabase
       .from("services")
       .select("*")
@@ -87,8 +90,15 @@ export async function getDynamicServices(): Promise<DbService[]> {
 
 /**
  * Fetch all services (active + inactive) for admin dashboard.
+ * Requires admin or staff authorization.
  */
 export async function getAllServicesForAdmin(): Promise<DbService[]> {
+  const auth = await verifyAdminSession();
+  if (!auth.authorized) {
+    console.warn("Unauthorized attempt to fetch all services for admin.");
+    return [];
+  }
+
   try {
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -109,11 +119,20 @@ export async function getAllServicesForAdmin(): Promise<DbService[]> {
 
 /**
  * Update an existing service in Supabase and revalidate pages.
+ * Requires admin authorization.
  */
 export async function updateServiceAction(
   serviceId: string,
   input: Partial<ServiceInput>
 ): Promise<{ success: boolean; error?: string }> {
+  const auth = await verifyAdminSession();
+  if (!auth.authorized) {
+    return {
+      success: false,
+      error: auth.error || "Akses ditolak: otorisasi administratif diperlukan.",
+    };
+  }
+
   try {
     const supabase = await createClient();
 
@@ -141,10 +160,19 @@ export async function updateServiceAction(
 
 /**
  * Create a new service in Supabase.
+ * Requires admin authorization.
  */
 export async function createServiceAction(
   input: ServiceInput
 ): Promise<{ success: boolean; error?: string }> {
+  const auth = await verifyAdminSession();
+  if (!auth.authorized) {
+    return {
+      success: false,
+      error: auth.error || "Akses ditolak: otorisasi administratif diperlukan.",
+    };
+  }
+
   try {
     const supabase = await createClient();
 
@@ -187,10 +215,19 @@ export async function createServiceAction(
 
 /**
  * Delete a service from Supabase.
+ * Requires admin authorization.
  */
 export async function deleteServiceAction(
   serviceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  const auth = await verifyAdminSession();
+  if (!auth.authorized) {
+    return {
+      success: false,
+      error: auth.error || "Akses ditolak: otorisasi administratif diperlukan.",
+    };
+  }
+
   try {
     const supabase = await createClient();
 

@@ -8,7 +8,7 @@ import { TermsAndReferralSection } from "@/components/home/TermsAndReferralSecti
 import { Footer } from "@/components/layout/Footer";
 import { getDynamicServices } from "@/app/actions/services";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 import {
   Send,
   Calculator,

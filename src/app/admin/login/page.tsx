@@ -122,7 +122,7 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="w-full neo-btn-lime py-3 text-sm font-black flex items-center justify-center gap-2 mt-2 disabled:opacity-60"
+              className="w-full neo-btn-lime py-3 text-sm font-black flex items-center justify-center gap-2 mt-2 disabled:opacity-60 cursor-pointer"
             >
               {isPending ? (
                 <>
@@ -149,48 +149,49 @@ export default function AdminLoginPage() {
           </div>
         </div>
 
-        {/* Collapsible Safe Admin Setup Guide (Compliant with SYSTEM_RULES) */}
-        <div className="mt-4 neo-box p-4 bg-white shadow-neo-sm">
-          <button
-            type="button"
-            onClick={() => setShowSetupGuide(!showSetupGuide)}
-            className="w-full flex items-center justify-between text-left text-xs font-black text-slate-800"
-          >
-            <span className="flex items-center gap-1.5">
-              <Info className="h-4 w-4 text-neo-blue" />
-              <span>Panduan Pembuatan Akun Admin Resmi</span>
-            </span>
-            <ChevronDown
-              className={`h-4 w-4 transition-transform ${
-                showSetupGuide ? "rotate-180" : ""
-              }`}
-            />
-          </button>
+        {/* Collapsible Safe Admin Setup Guide (Visible in development only to prevent information disclosure in production) */}
+        {process.env.NODE_ENV === "development" && (
+          <div className="mt-4 neo-box p-4 bg-white shadow-neo-sm">
+            <button
+              type="button"
+              onClick={() => setShowSetupGuide(!showSetupGuide)}
+              className="w-full flex items-center justify-between text-left text-xs font-black text-slate-800 cursor-pointer"
+            >
+              <span className="flex items-center gap-1.5">
+                <Info className="h-4 w-4 text-neo-blue" />
+                <span>Panduan Pembuatan Akun Admin (Dev Mode)</span>
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 transition-transform ${
+                  showSetupGuide ? "rotate-180" : ""
+                }`}
+              />
+            </button>
 
-          {showSetupGuide && (
-            <div className="mt-3 pt-3 border-t border-slate-200 text-xs text-slate-700 font-medium space-y-2 leading-relaxed">
-              <p>
-                Sesuai standar keamanan, akun admin <strong>tidak di-hardcode</strong> ke dalam source code. Untuk membuat akun admin pertama kali:
-              </p>
-              <ol className="list-decimal pl-4 space-y-1 text-slate-800 font-mono text-[11px]">
-                <li>Buka Dashboard Supabase Anda &gt; menu <strong>Authentication &gt; Users</strong>.</li>
-                <li>Klik <strong>Add User &gt; Create User</strong> dengan email &amp; kata sandi yang Anda inginkan.</li>
-                <li>
-                  Buka <strong>SQL Editor</strong> dan jalankan query untuk memberikan hak admin:
-                  <div className="p-2 bg-slate-900 text-slate-200 rounded mt-1 overflow-x-auto text-[10px]">
-                    INSERT INTO public.profiles (id, full_name, email, role)<br />
-                    VALUES (&apos;&lt;USER_UUID_FROM_AUTH&gt;&apos;, &apos;Super Admin&apos;, &apos;email@anda.com&apos;, &apos;admin&apos;)<br />
-                    ON CONFLICT (id) DO UPDATE SET role = &apos;admin&apos;;
-                  </div>
-                </li>
-              </ol>
-            </div>
-          )}
-        </div>
+            {showSetupGuide && (
+              <div className="mt-3 pt-3 border-t border-slate-200 text-xs text-slate-700 font-medium space-y-2 leading-relaxed">
+                <p>
+                  Sesuai standar keamanan, akun admin <strong>tidak di-hardcode</strong> ke dalam source code. Untuk membuat akun admin pertama kali:
+                </p>
+                <ol className="list-decimal pl-4 space-y-1 text-slate-800 font-mono text-[11px]">
+                  <li>Buka Dashboard Supabase Anda &gt; menu <strong>Authentication &gt; Users</strong>.</li>
+                  <li>Klik <strong>Add User &gt; Create User</strong> dengan email &amp; kata sandi yang Anda inginkan.</li>
+                  <li>
+                    Buka <strong>SQL Editor</strong> dan jalankan query untuk memberikan hak admin:
+                    <div className="p-2 bg-slate-900 text-slate-200 rounded mt-1 overflow-x-auto text-[10px]">
+                      INSERT INTO public.profiles (id, full_name, email, role)<br />
+                      VALUES (&apos;&lt;USER_UUID_FROM_AUTH&gt;&apos;, &apos;Super Admin&apos;, &apos;email@anda.com&apos;, &apos;admin&apos;)<br />
+                      ON CONFLICT (id) DO UPDATE SET role = &apos;admin&apos;;
+                    </div>
+                  </li>
+                </ol>
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
 
     </div>
   );
 }
-

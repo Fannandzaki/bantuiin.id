@@ -15,52 +15,71 @@ export async function middleware(request: NextRequest) {
       !supabaseUrl.includes("placeholder-id") &&
       !supabaseKey.includes("placeholder");
 
-    // If Supabase is configured in production / staging, enforce real session check
-    if (isSupabaseConfigured) {
-      let response = NextResponse.next({
-        request: {
-          headers: request.headers,
-        },
-      });
-
-      const supabase = createServerClient(supabaseUrl, supabaseKey, {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            request.cookies.set({ name, value, ...options });
-            response = NextResponse.next({
-              request: {
-                headers: request.headers,
-              },
-            });
-            response.cookies.set({ name, value, ...options });
-          },
-          remove(name: string, options: CookieOptions) {
-            request.cookies.set({ name, value: "", ...options });
-            response = NextResponse.next({
-              request: {
-                headers: request.headers,
-              },
-            });
-            response.cookies.set({ name, value: "", ...options });
-          },
-        },
-      });
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        const loginUrl = new URL("/admin/login", request.url);
-        loginUrl.searchParams.set("redirect", pathname);
-        return NextResponse.redirect(loginUrl);
-      }
-
-      return response;
+    // Fail-Closed: If database is not configured, deny access immediately
+    if (!isSupabaseConfigured) {
+      const loginUrl = new URL("/admin/login", request.url);
+      loginUrl.searchParams.set("error", "unconfigured");
+      return NextResponse.redirect(loginUrl);
     }
+
+    let response = NextResponse.next({
+      request: {
+        headers: request.headers,
+      },
+    });
+
+    const supabase = createServerClient(supabaseUrl, supabaseKey, {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          request.cookies.set({ name, value, ...options });
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          });
+          response.cookies.set({ name, value, ...options });
+        },
+        remove(name: string, options: CookieOptions) {
+          request.cookies.set({ name, value: "", ...options });
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          });
+          response.cookies.set({ name, value: "", ...options });
+        },
+      },
+    });
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    // 1. Unauthenticated: redirect to login
+    if (userError || !user) {
+      const loginUrl = new URL("/admin/login", request.url);
+      loginUrl.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // 2. Role Check: verify user is admin or staff
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile || (profile.role !== "admin" && profile.role !== "staff")) {
+      const loginUrl = new URL("/admin/login", request.url);
+      loginUrl.searchParams.set("error", "unauthorized");
+      return NextResponse.redirect(loginUrl);
+    }
+
+    return response;
   }
 
   return NextResponse.next();
