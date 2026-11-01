@@ -52,3 +52,4 @@ export function checkRateLimit(
     resetInMs: Math.max(0, record.resetAt - now),
   };
 }
+
