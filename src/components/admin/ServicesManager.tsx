@@ -5,6 +5,7 @@ import {
   DbService,
   updateServiceAction,
   createServiceAction,
+  deleteServiceAction,
   ServiceInput,
 } from "@/app/actions/services";
 import {
@@ -18,6 +19,8 @@ import {
   Eye,
   EyeOff,
   Search,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 
 interface ServicesManagerProps {
@@ -31,8 +34,10 @@ export function ServicesManager({ initialServices }: ServicesManagerProps) {
 
   // Modal State
   const [editingService, setEditingService] = useState<DbService | null>(null);
+  const [deletingService, setDeletingService] = useState<DbService | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
 
   // Form State for Editing or Creating
@@ -119,7 +124,6 @@ export function ServicesManager({ initialServices }: ServicesManagerProps) {
       setIsSaving(false);
       if (result.success) {
         setNotification("Layanan baru berhasil ditambahkan!");
-        // Refresh local state
         const newMock: DbService = {
           id: `srv-${Date.now()}`,
           category_id: formData.category_id,
@@ -164,6 +168,23 @@ export function ServicesManager({ initialServices }: ServicesManagerProps) {
       } else {
         alert(result.error || "Gagal memperbarui layanan");
       }
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingService) return;
+    setIsDeleting(true);
+
+    const result = await deleteServiceAction(deletingService.id);
+    setIsDeleting(false);
+
+    if (result.success) {
+      setServices((prev) => prev.filter((s) => s.id !== deletingService.id));
+      setNotification(`Layanan "${deletingService.title}" berhasil dihapus.`);
+      setDeletingService(null);
+      setTimeout(() => setNotification(null), 3500);
+    } else {
+      alert(result.error || "Gagal menghapus layanan.");
     }
   };
 
@@ -267,62 +288,82 @@ export function ServicesManager({ initialServices }: ServicesManagerProps) {
               </tr>
             </thead>
             <tbody className="divide-y border-black font-medium text-slate-800">
-              {filteredServices.map((srv) => (
-                <tr key={srv.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="p-3.5">
-                    <span className="neo-tag font-mono text-[10px] bg-slate-100 text-slate-800">
-                      {srv.category_id.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="p-3.5">
-                    <p className="font-black text-black text-sm">{srv.title}</p>
-                    <p className="text-[11px] text-slate-500 line-clamp-1 max-w-sm mt-0.5">
-                      {srv.description}
-                    </p>
-                  </td>
-                  <td className="p-3.5 font-mono font-black text-neo-blueDark text-sm">
-                    {srv.price_range_text}
-                  </td>
-                  <td className="p-3.5 font-mono text-slate-700 flex items-center gap-1">
-                    <Clock className="h-3 w-3 text-slate-400" />
-                    <span>{srv.estimated_duration}</span>
-                  </td>
-                  <td className="p-3.5">
-                    <button
-                      type="button"
-                      onClick={() => handleQuickToggleActive(srv)}
-                      className={`neo-tag font-mono text-[10px] flex items-center gap-1 cursor-pointer transition-opacity hover:opacity-80 ${
-                        srv.is_active
-                          ? "bg-emerald-100 text-emerald-900 border-emerald-500"
-                          : "bg-slate-200 text-slate-600 border-slate-400"
-                      }`}
-                      title="Klik untuk mengubah status aktif"
-                    >
-                      {srv.is_active ? (
-                        <>
-                          <Eye className="h-2.5 w-2.5" />
-                          <span>PUBLIK (AKTIF)</span>
-                        </>
-                      ) : (
-                        <>
-                          <EyeOff className="h-2.5 w-2.5" />
-                          <span>DISEMBUNYIKAN</span>
-                        </>
-                      )}
-                    </button>
-                  </td>
-                  <td className="p-3.5 text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEdit(srv)}
-                      className="neo-btn-white py-1.5 px-3 text-xs font-mono font-bold flex items-center gap-1 ml-auto"
-                    >
-                      <Edit3 className="h-3 w-3 text-slate-700" />
-                      <span>Ubah Harga</span>
-                    </button>
+              {filteredServices.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-slate-500 font-medium">
+                    Tidak ada layanan ditemukan untuk filter ini.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredServices.map((srv) => (
+                  <tr key={srv.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="p-3.5">
+                      <span className="neo-tag font-mono text-[10px] bg-slate-100 text-slate-800">
+                        {srv.category_id.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="p-3.5">
+                      <p className="font-black text-black text-sm">{srv.title}</p>
+                      <p className="text-[11px] text-slate-500 line-clamp-1 max-w-sm mt-0.5">
+                        {srv.description}
+                      </p>
+                    </td>
+                    <td className="p-3.5 font-mono font-black text-neo-blueDark text-sm">
+                      {srv.price_range_text}
+                    </td>
+                    <td className="p-3.5 font-mono text-slate-700 flex items-center gap-1">
+                      <Clock className="h-3 w-3 text-slate-400" />
+                      <span>{srv.estimated_duration}</span>
+                    </td>
+                    <td className="p-3.5">
+                      <button
+                        type="button"
+                        onClick={() => handleQuickToggleActive(srv)}
+                        className={`neo-tag font-mono text-[10px] flex items-center gap-1 cursor-pointer transition-opacity hover:opacity-80 ${
+                          srv.is_active
+                            ? "bg-emerald-100 text-emerald-900 border-emerald-500"
+                            : "bg-slate-200 text-slate-600 border-slate-400"
+                        }`}
+                        title="Klik untuk mengubah status aktif"
+                      >
+                        {srv.is_active ? (
+                          <>
+                            <Eye className="h-2.5 w-2.5" />
+                            <span>PUBLIK (AKTIF)</span>
+                          </>
+                        ) : (
+                          <>
+                            <EyeOff className="h-2.5 w-2.5" />
+                            <span>DISEMBUNYIKAN</span>
+                          </>
+                        )}
+                      </button>
+                    </td>
+                    <td className="p-3.5 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(srv)}
+                          className="neo-btn-white py-1.5 px-2.5 text-xs font-mono font-bold flex items-center gap-1"
+                          title="Ubah detail & harga layanan"
+                        >
+                          <Edit3 className="h-3 w-3 text-slate-700" />
+                          <span>Ubah</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeletingService(srv)}
+                          className="py-1.5 px-2.5 text-xs font-mono font-bold border-2 border-black rounded bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 shadow-neo-sm transition-colors cursor-pointer"
+                          title="Hapus layanan ini"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          <span>Hapus</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -491,34 +532,115 @@ export function ServicesManager({ initialServices }: ServicesManagerProps) {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="neo-btn-white py-2 px-4 text-xs font-black"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="neo-btn-lime py-2 px-5 text-xs font-black flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span>Menyimpan ke Database...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      <span>{isAddingNew ? "Tambah Layanan" : "Simpan Perubahan"}</span>
-                    </>
-                  )}
-                </button>
+              <div className="flex items-center justify-between pt-3 border-t border-slate-200">
+                {editingService ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const toDelete = editingService;
+                      handleCloseModal();
+                      setDeletingService(toDelete);
+                    }}
+                    className="py-2 px-3 text-xs font-mono font-bold text-red-600 hover:text-red-700 hover:bg-red-50 border border-transparent hover:border-red-300 rounded flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Hapus Layanan Ini</span>
+                  </button>
+                ) : (
+                  <div />
+                )}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="neo-btn-white py-2 px-4 text-xs font-black"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="neo-btn-lime py-2 px-5 text-xs font-black flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span>Menyimpan ke Database...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        <span>{isAddingNew ? "Tambah Layanan" : "Simpan Perubahan"}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingService && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="neo-box max-w-md w-full bg-white shadow-neo-lg p-6 space-y-4 border-2 border-black animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="p-2.5 border-2 border-black rounded-lg bg-red-100 shrink-0">
+                <AlertTriangle className="h-6 w-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="font-heading font-black text-lg text-black">
+                  Hapus Layanan?
+                </h3>
+                <p className="text-xs text-slate-600 font-medium">
+                  Tindakan ini tidak dapat dibatalkan.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-slate-50 border-2 border-black rounded-lg text-xs space-y-1">
+              <p className="font-black text-black text-sm">{deletingService.title}</p>
+              <div className="flex items-center justify-between text-slate-600 font-mono text-[11px] pt-1">
+                <span>Kategori: {deletingService.category_id.toUpperCase()}</span>
+                <span className="font-bold text-neo-blueDark">{deletingService.price_range_text}</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Layanan ini akan dihapus secara permanen dari database Supabase dan tidak akan lagi muncul di katalog harga website publik.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t-2 border-black">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeletingService(null)}
+                className="neo-btn-white py-2 px-4 text-xs font-black cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleDelete}
+                className="py-2 px-4 text-xs font-black text-white bg-red-600 hover:bg-red-700 border-2 border-black rounded shadow-neo-sm flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Menghapus...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    <span>Ya, Hapus Permanen</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

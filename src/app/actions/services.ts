@@ -184,3 +184,33 @@ export async function createServiceAction(
     return { success: false, error: "Gagal menambahkan layanan baru." };
   }
 }
+
+/**
+ * Delete a service from Supabase.
+ */
+export async function deleteServiceAction(
+  serviceId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+
+    const { error } = await supabase
+      .from("services")
+      .delete()
+      .eq("id", serviceId);
+
+    if (error) {
+      console.error("Delete service error from Supabase:", error);
+      return { success: false, error: error.message };
+    }
+
+    // Revalidate both public homepage and admin catalog
+    revalidatePath("/");
+    revalidatePath("/admin/layanan");
+
+    return { success: true };
+  } catch (err) {
+    console.error("Delete service error:", err);
+    return { success: false, error: "Gagal menghapus layanan dari database." };
+  }
+}
