@@ -10,7 +10,7 @@ export function TermsAndReferralSection() {
     {
       title: "1. Sistem DP 50% & Pembayaran Fleksibel",
       content:
-        "Klien wajib membayarkan DP minimal 50% di awal sebagai tanda jadi sebelum pengerjaan dimulai. Untuk transaksi di bawah Rp50.000 atau kategori kilat (< 12 jam), wajib melakukan Full Payment (100%). Pesanan baru dimasukkan ke antrean pengerjaan segera setelah bukti pembayaran diverifikasi admin.",
+        "Klien wajib membayarkan DP minimal 50% di awal sebagai tanda jadi sebelum pengerjaan dimulai. Untuk transaksi di bawah Rp50.000 atau pesanan darurat (< 2 jam dengan persetujuan admin), disarankan melakukan Full Payment (100%). Pesanan baru dimasukkan ke antrean pengerjaan segera setelah bukti pembayaran diverifikasi admin.",
     },
     {
       title: "2. Gratis Revisi Minor 2–3x (Klaim 2x24 Jam)",

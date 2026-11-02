@@ -27,6 +27,10 @@ export const digitalTaskOrderSchema = z.object({
     .trim()
     .min(3, { message: "Tenggat waktu wajib diisi spesifik" }),
   includeLearnPackage: z.boolean().default(false),
+  // New priority & after-hours fields
+  requestedDeadline: z.string().optional(),
+  startTimePreference: z.enum(["asap", "specific_time", "regular_hours"]).default("asap"),
+  requestedStartTime: z.string().optional(),
 });
 
 export const hardwareServiceOrderSchema = z.object({
@@ -51,10 +55,12 @@ export const hardwareServiceOrderSchema = z.object({
     .string()
     .trim()
     .min(3, { message: "Target waktu selesai wajib diisi" }),
-  acceptsDataDisclaimer: z.boolean().refine((val) => val === true, {
-    message: "Wajib menyetujui disclaimer backup data sebelum servis",
-  }),
+  acceptsDataDisclaimer: z.boolean().default(false),
+  // New priority & after-hours fields
+  requestedDeadline: z.string().optional(),
+  startTimePreference: z.enum(["asap", "specific_time", "regular_hours"]).default("asap"),
+  requestedStartTime: z.string().optional(),
 });
 
-export type DigitalTaskOrderValues = z.input<typeof digitalTaskOrderSchema>;
-export type HardwareServiceOrderValues = z.input<typeof hardwareServiceOrderSchema>;
+export type DigitalTaskOrderValues = z.infer<typeof digitalTaskOrderSchema>;
+export type HardwareServiceOrderValues = z.infer<typeof hardwareServiceOrderSchema>;

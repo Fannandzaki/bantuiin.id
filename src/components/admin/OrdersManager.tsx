@@ -1,9 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { AdminOrder, OrderStatus, OrderType } from "@/types";
-import { updateOrderStatusAction } from "@/app/actions/admin-orders";
+import {
+  updateOrderStatusAction,
+  verifyPriorityAction,
+  createQuotationAction,
+} from "@/app/actions/admin-orders";
 import { formatRupiah } from "@/lib/utils";
+import {
+  calculateOrderPricing,
+  calculateRemainingHours,
+  formatJakartaDateTime,
+} from "@/lib/pricing/priority-calculator";
 import {
   Search,
   Filter,
@@ -15,6 +24,10 @@ import {
   Loader2,
   AlertCircle,
   Edit3,
+  ShieldAlert,
+  Calculator,
+  Send,
+  Check,
 } from "lucide-react";
 
 interface OrdersManagerProps {
@@ -33,6 +46,19 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
   const [statusNote, setStatusNote] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  // Priority verification state
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [isVerifyingPriority, setIsVerifyingPriority] = useState(false);
+
+  // Quotation Builder State
+  const [basePriceInput, setBasePriceInput] = useState<number>(100000);
+  const [includeAdminAdjustment, setIncludeAdminAdjustment] = useState(false);
+  const [adminAdjPercent, setAdminAdjPercent] = useState<number>(0);
+  const [adminAdjReason, setAdminAdjReason] = useState("");
+  const [isCreatingQuotation, setIsCreatingQuotation] = useState(false);
+  const [quotationCopied, setQuotationCopied] = useState(false);
 
   const statusOptions: { value: OrderStatus; label: string }[] = [
     { value: "new_inquiry", label: "Inquiry Baru" },
@@ -63,13 +89,39 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
     setSelectedOrder(order);
     setNewStatus(order.status);
     setStatusNote(order.internal_notes || "");
+    setRejectionReason("");
+    setBasePriceInput(order.total_price || 100000);
+    setIncludeAdminAdjustment(false);
+    setAdminAdjPercent(0);
+    setAdminAdjReason("");
     setActionSuccess(null);
+    setActionError(null);
   };
+
+  // Live calculation for quotation builder
+  const modalPricingCalc = useMemo(() => {
+    if (!selectedOrder) return null;
+
+    const candidateDeadline = selectedOrder.requested_deadline || selectedOrder.deadline;
+    return calculateOrderPricing({
+      basePrice: basePriceInput,
+      deadline: candidateDeadline,
+      startTimePreference: selectedOrder.start_time_preference || "asap",
+      requestedStartTime: selectedOrder.requested_start_time,
+      adminSpecialAdjustment: includeAdminAdjustment
+        ? {
+            percent: adminAdjPercent,
+            reason: adminAdjReason,
+          }
+        : undefined,
+    });
+  }, [selectedOrder, basePriceInput, includeAdminAdjustment, adminAdjPercent, adminAdjReason]);
 
   const handleUpdateStatus = async () => {
     if (!selectedOrder) return;
     setIsUpdating(true);
     setActionSuccess(null);
+    setActionError(null);
 
     const result = await updateOrderStatusAction(
       selectedOrder.id,
@@ -81,7 +133,6 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
 
     if (result.success) {
       setActionSuccess("Status pesanan berhasil diperbarui!");
-      // Update local state
       setOrders((prev) =>
         prev.map((o) =>
           o.id === selectedOrder.id
@@ -93,6 +144,144 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
         prev ? { ...prev, status: newStatus, internal_notes: statusNote } : null
       );
       setTimeout(() => setActionSuccess(null), 3000);
+    } else {
+      setActionError(result.error || "Gagal memperbarui status");
+    }
+  };
+
+  const handleVerifyPriority = async (decision: "approved" | "rejected") => {
+    if (!selectedOrder) return;
+    if (decision === "rejected" && !rejectionReason.trim()) {
+      setActionError("Mohon masukkan alasan penolakan permintaan prioritas.");
+      return;
+    }
+
+    setIsVerifyingPriority(true);
+    setActionSuccess(null);
+    setActionError(null);
+
+    const result = await verifyPriorityAction(
+      selectedOrder.id,
+      decision,
+      rejectionReason
+    );
+
+    setIsVerifyingPriority(false);
+
+    if (result.success) {
+      const updatedStatus = decision === "approved" ? "priority_approved" : "priority_rejected";
+      setActionSuccess(
+        decision === "approved"
+          ? "Permintaan prioritas berhasil disetujui!"
+          : "Permintaan prioritas ditolak dan dicatat di sistem."
+      );
+
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === selectedOrder.id
+            ? {
+                ...o,
+                priority_status: updatedStatus,
+                priority_rejection_reason: decision === "rejected" ? rejectionReason : null,
+              }
+            : o
+        )
+      );
+      setSelectedOrder((prev) =>
+        prev
+          ? {
+              ...prev,
+              priority_status: updatedStatus,
+              priority_rejection_reason: decision === "rejected" ? rejectionReason : null,
+            }
+          : null
+      );
+      setTimeout(() => setActionSuccess(null), 3000);
+    } else {
+      setActionError(result.error || "Gagal memverifikasi prioritas");
+    }
+  };
+
+  const handleCreateQuotation = async () => {
+    if (!selectedOrder || !modalPricingCalc) return;
+    if (includeAdminAdjustment && !adminAdjReason.trim()) {
+      setActionError("Mohon isi alasan penyesuaian khusus admin.");
+      return;
+    }
+
+    setIsCreatingQuotation(true);
+    setActionSuccess(null);
+    setActionError(null);
+
+    const result = await createQuotationAction({
+      orderId: selectedOrder.id,
+      basePrice: basePriceInput,
+      adminSpecialAdjustment: includeAdminAdjustment
+        ? {
+            percent: adminAdjPercent,
+            reason: adminAdjReason,
+          }
+        : undefined,
+      notes: statusNote || undefined,
+    });
+
+    setIsCreatingQuotation(false);
+
+    if (result.success && result.quotation) {
+      setActionSuccess("Quotation resmi berhasil dibuat & disimpan ke database!");
+
+      // Update state
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === selectedOrder.id
+            ? {
+                ...o,
+                status: "quotation_sent",
+                total_price: modalPricingCalc.finalPrice,
+              }
+            : o
+        )
+      );
+      setSelectedOrder((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: "quotation_sent",
+              total_price: modalPricingCalc.finalPrice,
+            }
+          : null
+      );
+
+      // Generate WhatsApp text
+      const cleanPhone = selectedOrder.customer_contact.replace(/[^0-9]/g, "");
+      const quoText =
+        `Halo Kak ${selectedOrder.customer_name}, berikut rincian Quotation Resmi dari BANTUIN.ID untuk pesanan ${selectedOrder.order_code}:\n\n` +
+        `• Layanan         : ${selectedOrder.service_category || "Layanan Kustom"}\n` +
+        `• Deadline        : ${formatJakartaDateTime(selectedOrder.requested_deadline || selectedOrder.deadline)}\n` +
+        `• Harga Dasar     : ${formatRupiah(modalPricingCalc.basePrice)}\n` +
+        `• Biaya Prioritas : +${modalPricingCalc.deadlineSurchargePercent}% (${formatRupiah(modalPricingCalc.deadlineSurchargeAmount)})\n` +
+        `• Biaya Luar Jam  : +${modalPricingCalc.afterHoursSurchargePercent}% (${formatRupiah(modalPricingCalc.afterHoursSurchargeAmount)})\n` +
+        (modalPricingCalc.capAdjustmentAmount > 0
+          ? `• Potongan Batas 25%: -${formatRupiah(modalPricingCalc.capAdjustmentAmount)}\n`
+          : "") +
+        `─────────────────────────────\n` +
+        `• TOTAL HARGA     : ${formatRupiah(modalPricingCalc.finalPrice)}\n` +
+        `• DP 50% (Tanda Jadi): ${formatRupiah(modalPricingCalc.dpAmount)}\n` +
+        `• Sisa Pelunasan  : ${formatRupiah(modalPricingCalc.finalAmount)}\n\n` +
+        `Pengerjaan langsung kami masukkan antrean aktif segera setelah bukti transfer DP diverifikasi. Terima kasih!`;
+
+      navigator.clipboard.writeText(quoText);
+      setQuotationCopied(true);
+      setTimeout(() => setQuotationCopied(false), 4000);
+
+      if (cleanPhone) {
+        window.open(
+          `https://wa.me/${cleanPhone}?text=${encodeURIComponent(quoText)}`,
+          "_blank"
+        );
+      }
+    } else {
+      setActionError(result.error || "Gagal membuat quotation");
     }
   };
 
@@ -121,128 +310,114 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
     }
   };
 
+  const renderPriorityBadge = (order: AdminOrder) => {
+    const rawDeadline = order.requested_deadline || order.deadline;
+    const hours = calculateRemainingHours(rawDeadline);
+
+    if (order.priority_status === "priority_pending_admin" || hours < 2) {
+      return (
+        <span className="neo-tag bg-red-100 text-red-900 border-red-500 font-mono text-[9px] flex items-center gap-1 animate-pulse font-black">
+          <ShieldAlert className="h-3 w-3 text-red-600" />
+          <span>DARURAT &lt; 2 JAM</span>
+        </span>
+      );
+    } else if (hours < 3) {
+      return (
+        <span className="neo-tag bg-amber-100 text-amber-900 font-mono text-[9px]">
+          MENDESAK 2–3 JAM (+20%)
+        </span>
+      );
+    } else if (hours < 6) {
+      return (
+        <span className="neo-tag bg-blue-100 text-neo-blue font-mono text-[9px]">
+          PRIORITAS 3–6 JAM (+10%)
+        </span>
+      );
+    }
+    return (
+      <span className="neo-tag bg-slate-100 text-slate-700 font-mono text-[9px]">
+        REGULER (&ge; 6 JAM)
+      </span>
+    );
+  };
+
   return (
     <div className="space-y-6">
       
-      {/* Search and Filters Bar */}
-      <div className="neo-box p-4 bg-white shadow-neo-sm space-y-3">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+      {/* Top Filter Bar */}
+      <div className="neo-box p-4 bg-white shadow-neo-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           
           {/* Search Input */}
-          <div className="md:col-span-6 relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+          <div className="relative flex-1 max-w-md">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
               <Search className="h-4 w-4" />
             </div>
             <input
               type="text"
-              placeholder="Cari ID order, nama klien, atau layanan..."
+              placeholder="Cari kode order, nama klien, atau layanan..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3.5 py-2 text-xs sm:text-sm font-medium border-2 border-black rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-neo-lime"
+              className="w-full pl-9 pr-3.5 py-2 text-xs font-medium border-2 border-black rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-neo-lime"
             />
           </div>
 
-          {/* Type Filter Buttons */}
-          <div className="md:col-span-6 flex flex-wrap items-center justify-start md:justify-end gap-1.5">
-            <button
-              type="button"
-              onClick={() => setTypeFilter("all")}
-              className={`neo-btn py-1.5 px-3 text-xs font-black ${
-                typeFilter === "all"
-                  ? "bg-black text-white shadow-neo-sm"
-                  : "bg-white text-slate-700 hover:bg-slate-50"
-              }`}
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <Filter className="h-3.5 w-3.5 text-slate-600" />
+              <span className="text-xs font-bold text-slate-700">Filter:</span>
+            </div>
+
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value as OrderType | "all")}
+              className="px-2.5 py-1.5 text-xs font-bold border-2 border-black rounded-lg bg-white focus:outline-none"
             >
-              Semua Jenis
-            </button>
-            <button
-              type="button"
-              onClick={() => setTypeFilter("digital_task")}
-              className={`neo-btn py-1.5 px-3 text-xs font-black flex items-center gap-1 ${
-                typeFilter === "digital_task"
-                  ? "bg-neo-blue text-white shadow-neo-sm"
-                  : "bg-white text-slate-700 hover:bg-slate-50"
-              }`}
+              <option value="all">Semua Tipe</option>
+              <option value="digital_task">Tugas Digital</option>
+              <option value="hardware_service">Servis Hardware</option>
+            </select>
+
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as OrderStatus | "all")}
+              className="px-2.5 py-1.5 text-xs font-bold border-2 border-black rounded-lg bg-white focus:outline-none"
             >
-              <FileCode className="h-3 w-3" />
-              <span>Tugas Digital</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setTypeFilter("hardware_service")}
-              className={`neo-btn py-1.5 px-3 text-xs font-black flex items-center gap-1 ${
-                typeFilter === "hardware_service"
-                  ? "bg-neo-mint text-black shadow-neo-sm"
-                  : "bg-white text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              <Laptop className="h-3 w-3" />
-              <span>Servis Laptop</span>
-            </button>
+              <option value="all">Semua Status</option>
+              {statusOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
 
         </div>
-
-        {/* Status Filter Tabs */}
-        <div className="flex flex-wrap items-center gap-1 pt-2 border-t border-slate-100 overflow-x-auto text-xs font-mono">
-          <span className="text-[11px] font-bold text-slate-500 mr-1 flex items-center gap-1">
-            <Filter className="h-3 w-3" /> Status:
-          </span>
-          <button
-            type="button"
-            onClick={() => setStatusFilter("all")}
-            className={`px-2 py-0.5 rounded border ${
-              statusFilter === "all"
-                ? "bg-black text-white border-black font-black"
-                : "bg-slate-100 text-slate-700 border-transparent hover:border-slate-400"
-            }`}
-          >
-            Semua ({orders.length})
-          </button>
-          {statusOptions.map((opt) => {
-            const count = orders.filter((o) => o.status === opt.value).length;
-            if (count === 0 && statusFilter !== opt.value) return null;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setStatusFilter(opt.value)}
-                className={`px-2 py-0.5 rounded border ${
-                  statusFilter === opt.value
-                    ? "bg-neo-lime text-black border-black font-black"
-                    : "bg-slate-100 text-slate-700 border-transparent hover:border-slate-400"
-                }`}
-              >
-                {opt.label} ({count})
-              </button>
-            );
-          })}
-        </div>
-
       </div>
 
       {/* Orders Table */}
-      <div className="neo-box overflow-hidden bg-white shadow-neo">
+      <div className="neo-box bg-white overflow-hidden shadow-neo">
         {filteredOrders.length === 0 ? (
           <div className="p-12 text-center">
-            <AlertCircle className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-            <p className="font-black text-sm text-black">
-              Tidak ada pesanan yang sesuai filter
-            </p>
+            <AlertCircle className="h-10 w-10 text-slate-400 mx-auto mb-3" />
+            <h4 className="font-heading font-black text-base text-slate-800">
+              Tidak ada pesanan yang sesuai
+            </h4>
             <p className="text-xs text-slate-500 mt-1">
-              Coba ubah kata kunci pencarian atau bersihkan filter status.
+              Coba sesuaikan filter pencarian atau status pesanan di atas.
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b-2 border-black bg-slate-100 text-slate-800 font-mono font-black uppercase text-[11px]">
-                  <th className="p-3.5">ID Order</th>
-                  <th className="p-3.5">Klien &amp; Kontak</th>
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="bg-neo-dark text-white font-mono text-[11px] uppercase tracking-wider border-b-2 border-black">
+                <tr>
+                  <th className="p-3.5">Kode Order</th>
+                  <th className="p-3.5">Klien</th>
                   <th className="p-3.5">Layanan</th>
-                  <th className="p-3.5">Tenggat Waktu</th>
-                  <th className="p-3.5">Estimasi Biaya</th>
+                  <th className="p-3.5">Deadline &amp; Urgensi</th>
+                  <th className="p-3.5">Harga Final</th>
                   <th className="p-3.5">Status</th>
                   <th className="p-3.5 text-right">Aksi</th>
                 </tr>
@@ -286,8 +461,9 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
                           {order.service_category || "Layanan Kustom"}
                         </p>
                       </td>
-                      <td className="p-3.5 font-mono text-[11px] text-slate-700">
-                        {order.deadline}
+                      <td className="p-3.5 font-mono text-[11px]">
+                        <p className="font-bold text-black">{order.deadline}</p>
+                        <div className="mt-1">{renderPriorityBadge(order)}</div>
                       </td>
                       <td className="p-3.5 font-mono font-black text-black">
                         {order.total_price ? formatRupiah(order.total_price) : "-"}
@@ -302,7 +478,7 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
                               href={`https://wa.me/${order.customer_contact.replace(/[^0-9]/g, "")}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="neo-btn-lime py-1 px-2.5 text-[11px] font-mono flex items-center gap-1"
+                              className="neo-btn-lime py-1 px-2.5 text-[11px] font-mono flex items-center gap-1 cursor-pointer"
                               title="Chat WhatsApp Klien"
                             >
                               <MessageCircle className="h-3 w-3" />
@@ -312,7 +488,7 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
                           <button
                             type="button"
                             onClick={() => handleOpenDetail(order)}
-                            className="neo-btn-white py-1 px-2.5 text-[11px] font-mono flex items-center gap-1"
+                            className="neo-btn-white py-1 px-2.5 text-[11px] font-mono flex items-center gap-1 cursor-pointer"
                           >
                             <Edit3 className="h-3 w-3 text-slate-700" />
                             <span>Detail</span>
@@ -331,44 +507,99 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
       {/* Detail / Update Status Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="neo-box max-w-2xl w-full bg-white max-h-[90vh] overflow-y-auto shadow-neo-lg p-6 sm:p-7">
+          <div className="neo-box max-w-3xl w-full bg-white max-h-[92vh] overflow-y-auto shadow-neo-lg p-6 sm:p-7">
             
             {/* Modal Header */}
             <div className="flex items-start justify-between pb-4 border-b-2 border-black mb-5">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="neo-pill bg-neo-yellow text-black text-xs font-mono">
+                  <span className="neo-pill bg-neo-yellow text-black text-xs font-mono font-black">
                     {selectedOrder.order_code}
                   </span>
                   <span className="neo-tag bg-slate-100 text-slate-800 font-mono">
                     {selectedOrder.order_type === "digital_task" ? "TUGAS DIGITAL" : "SERVIS HARDWARE"}
                   </span>
+                  {selectedOrder.priority_status === "priority_pending_admin" && (
+                    <span className="neo-tag bg-red-100 text-red-900 font-mono font-black animate-pulse">
+                      PERLU REVIEW PRIORITAS
+                    </span>
+                  )}
                 </div>
                 <h3 className="font-heading font-black text-xl text-black">
-                  Detail Pesanan &amp; Kelola Status
+                  Detail Pesanan &amp; Quotation Resmi
                 </h3>
               </div>
 
               <button
                 type="button"
                 onClick={() => setSelectedOrder(null)}
-                className="p-1.5 rounded border border-black hover:bg-slate-100"
+                className="p-1.5 rounded border border-black hover:bg-slate-100 cursor-pointer"
                 aria-label="Tutup"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Action Success Alert */}
+            {/* Alerts */}
             {actionSuccess && (
               <div className="mb-4 p-3 border-2 border-black rounded bg-emerald-100 text-emerald-900 font-bold text-xs flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-700" />
                 <span>{actionSuccess}</span>
               </div>
             )}
+            {actionError && (
+              <div className="mb-4 p-3 border-2 border-black rounded bg-red-100 text-red-900 font-bold text-xs flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-red-700" />
+                <span>{actionError}</span>
+              </div>
+            )}
 
-            {/* Order Brief Info */}
-            <div className="space-y-4 text-xs">
+            <div className="space-y-5 text-xs">
+              
+              {/* Emergency Approval Action Card (If < 2h or pending admin review) */}
+              {selectedOrder.priority_status === "priority_pending_admin" && (
+                <div className="p-4 border-2 border-red-600 rounded-lg bg-red-50 space-y-3">
+                  <div className="flex items-center gap-2 text-red-900 font-black text-sm">
+                    <ShieldAlert className="h-5 w-5 text-red-600" />
+                    <span>Konfirmasi Permintaan Prioritas Darurat (&lt; 2 Jam)</span>
+                  </div>
+                  <p className="text-slate-700 font-medium leading-relaxed">
+                    Pesanan ini memiliki deadline mendesak (&lt; 2 jam). Pastikan kesiapan teknisi/developer sebelum menyetujui pengerjaan.
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      disabled={isVerifyingPriority}
+                      onClick={() => handleVerifyPriority("approved")}
+                      className="neo-btn-lime py-2 px-4 text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>Setujui Pengerjaan Darurat (+25%)</span>
+                    </button>
+
+                    <div className="flex-1 flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Alasan penolakan jika tidak sanggup (cth: slot tim penuh)..."
+                        value={rejectionReason}
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                        className="flex-1 px-3 py-1.5 text-xs font-medium border-2 border-black rounded bg-white"
+                      />
+                      <button
+                        type="button"
+                        disabled={isVerifyingPriority}
+                        onClick={() => handleVerifyPriority("rejected")}
+                        className="neo-btn-dark py-2 px-3 text-xs font-black cursor-pointer disabled:opacity-50"
+                      >
+                        Tolak
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Order Brief Info */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 border-2 border-black rounded-lg bg-slate-50 font-medium">
                 <div>
                   <span className="text-slate-500 block text-[11px] font-mono">Nama Klien:</span>
@@ -391,41 +622,12 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
                   <span className="font-bold text-black">{selectedOrder.service_category}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[11px] font-mono">Tenggat Waktu:</span>
-                  <span className="font-mono font-bold text-amber-800">{selectedOrder.deadline}</span>
+                  <span className="text-slate-500 block text-[11px] font-mono">Deadline Diminta:</span>
+                  <span className="font-mono font-bold text-amber-900">{selectedOrder.deadline}</span>
                 </div>
               </div>
 
-              {/* Hardware specific or digital specific */}
-              {selectedOrder.order_type === "digital_task" ? (
-                <div className="p-3.5 border-2 border-black rounded-lg bg-blue-50/50">
-                  <p className="text-[11px] font-mono font-bold text-slate-600 mb-1">
-                    Format Output Diminta:
-                  </p>
-                  <p className="font-mono text-black font-bold">
-                    {selectedOrder.format_output || "Standar .zip / .docx"}
-                  </p>
-                  {selectedOrder.include_learn_package && (
-                    <div className="mt-2 inline-flex items-center gap-1.5 neo-tag bg-neo-yellow text-black font-mono">
-                      <span>✓</span> Termasuk Paket Sekalian Belajar (+Rp25.000)
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="p-3.5 border-2 border-black rounded-lg bg-emerald-50/50">
-                  <p className="text-[11px] font-mono font-bold text-slate-600 mb-1">
-                    Detail Servis Laptop:
-                  </p>
-                  <p className="font-bold text-black">
-                    Unit: {selectedOrder.hardware_details?.laptop_model || "-"}
-                  </p>
-                  <p className="text-slate-700 mt-0.5">
-                    Metode: {selectedOrder.hardware_details?.delivery_method || "-"}
-                  </p>
-                </div>
-              )}
-
-              {/* Instructions / Soal */}
+              {/* Instructions */}
               <div className="p-3.5 border-2 border-black rounded-lg bg-white">
                 <span className="text-[11px] font-mono font-bold text-slate-500 block mb-1">
                   Detail Instruksi / Soal:
@@ -435,10 +637,147 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
                 </p>
               </div>
 
+              {/* Quotation Builder (Interactive Engine) */}
+              <div className="p-4 border-2 border-black rounded-lg bg-neo-yellow/20 space-y-3">
+                <div className="flex items-center justify-between border-b border-black pb-2">
+                  <div className="flex items-center gap-1.5 font-heading font-black text-sm text-black">
+                    <Calculator className="h-4 w-4 text-black" />
+                    <span>Interactive Quotation Generator (Hitung Harga Final)</span>
+                  </div>
+                  <span className="neo-tag bg-neo-lime text-black font-mono text-[10px]">
+                    SERVER ENFORCED
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-black uppercase text-slate-800 mb-1">
+                      Harga Dasar Layanan (Base Price) *
+                    </label>
+                    <div className="relative">
+                      <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-xs font-mono font-black text-slate-500">
+                        Rp
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        step={5000}
+                        value={basePriceInput}
+                        onChange={(e) => setBasePriceInput(Number(e.target.value) || 0)}
+                        className="w-full pl-9 pr-3 py-2 text-sm font-black border-2 border-black rounded-lg bg-white focus:outline-none"
+                      />
+                    </div>
+                    <p className="mt-1 text-[10px] text-slate-600 font-mono">
+                      Masukkan estimasi dasar sebelum surcharge prioritas.
+                    </p>
+                  </div>
+
+                  {modalPricingCalc && (
+                    <div className="p-3 border-2 border-black rounded-lg bg-white space-y-1 font-mono text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Harga Dasar:</span>
+                        <span className="font-bold">{formatRupiah(modalPricingCalc.basePrice)}</span>
+                      </div>
+                      <div className="flex justify-between text-blue-900">
+                        <span>Biaya Deadline (+{modalPricingCalc.deadlineSurchargePercent}%):</span>
+                        <span>+{formatRupiah(modalPricingCalc.deadlineSurchargeAmount)}</span>
+                      </div>
+                      <div className="flex justify-between text-purple-900">
+                        <span>Luar Jam (+{modalPricingCalc.afterHoursSurchargePercent}%):</span>
+                        <span>+{formatRupiah(modalPricingCalc.afterHoursSurchargeAmount)}</span>
+                      </div>
+                      {modalPricingCalc.capAdjustmentAmount > 0 && (
+                        <div className="flex justify-between text-emerald-700 font-bold">
+                          <span>Potongan Batas 25%:</span>
+                          <span>-{formatRupiah(modalPricingCalc.capAdjustmentAmount)}</span>
+                        </div>
+                      )}
+                      <div className="pt-2 border-t border-black flex justify-between font-black text-black text-sm">
+                        <span>Total Harga:</span>
+                        <span className="text-neo-blue">{formatRupiah(modalPricingCalc.finalPrice)}</span>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-slate-600">
+                        <span>DP 50% (Tanda Jadi):</span>
+                        <span>{formatRupiah(modalPricingCalc.dpAmount)}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Special Admin Override Accordion */}
+                <div className="pt-2">
+                  <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800">
+                    <input
+                      type="checkbox"
+                      checked={includeAdminAdjustment}
+                      onChange={(e) => setIncludeAdminAdjustment(e.target.checked)}
+                      className="h-4 w-4 accent-black rounded"
+                    />
+                    <span>Aktifkan Penyesuaian Harga Khusus Admin (Kondisi Khusus di Luar Batas)</span>
+                  </label>
+
+                  {includeAdminAdjustment && (
+                    <div className="mt-2.5 p-3 border-2 border-black rounded-lg bg-white space-y-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Persentase Biaya Tambahan Khusus (%)
+                          </label>
+                          <input
+                            type="number"
+                            value={adminAdjPercent}
+                            onChange={(e) => setAdminAdjPercent(Number(e.target.value) || 0)}
+                            className="w-full px-2.5 py-1.5 text-xs font-bold border-2 border-black rounded"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Alasan Operasional Khusus (Wajib Tercatat) *
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Cth: Perlu sewa server komputasi tambahan..."
+                            value={adminAdjReason}
+                            onChange={(e) => setAdminAdjReason(e.target.value)}
+                            className="w-full px-2.5 py-1.5 text-xs font-medium border-2 border-black rounded"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="button"
+                    disabled={isCreatingQuotation}
+                    onClick={handleCreateQuotation}
+                    className="neo-btn-lime py-2.5 px-5 text-xs font-black flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {isCreatingQuotation ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin text-black" />
+                        <span>Menyimpan Quotation...</span>
+                      </>
+                    ) : quotationCopied ? (
+                      <>
+                        <Check className="h-4 w-4" />
+                        <span>Quotation Tersimpan &amp; Format Disalin!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4" />
+                        <span>Simpan Quotation &amp; Buka WhatsApp Klien</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
               {/* Status Update Form */}
               <div className="pt-4 border-t-2 border-black space-y-3">
                 <h4 className="font-heading font-black text-sm text-black">
-                  Perbarui Status &amp; Catatan Internal:
+                  Perbarui Status Pesanan &amp; Catatan Internal:
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -477,15 +816,15 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
                   <button
                     type="button"
                     onClick={() => setSelectedOrder(null)}
-                    className="neo-btn-white py-2 px-4 text-xs font-black"
+                    className="neo-btn-white py-2 px-4 text-xs font-black cursor-pointer"
                   >
-                    Batal
+                    Tutup
                   </button>
                   <button
                     type="button"
                     disabled={isUpdating}
                     onClick={handleUpdateStatus}
-                    className="neo-btn-lime py-2 px-5 text-xs font-black flex items-center gap-1.5 disabled:opacity-50"
+                    className="neo-btn-dark py-2 px-5 text-xs font-black flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
                     {isUpdating ? (
                       <>
@@ -495,7 +834,7 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
                     ) : (
                       <>
                         <CheckCircle2 className="h-3.5 w-3.5" />
-                        <span>Simpan Perubahan</span>
+                        <span>Simpan Perubahan Status</span>
                       </>
                     )}
                   </button>
@@ -511,4 +850,3 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
     </div>
   );
 }
-

@@ -17,8 +17,9 @@ import {
   Wrench,
   Cpu,
   Flame,
-  Zap,
   Check,
+  Clock,
+  Moon,
 } from "lucide-react";
 
 export function PillarsSection() {
@@ -211,59 +212,106 @@ export function PillarsSection() {
             </div>
           </div>
 
-          {/* Card Add-on 2: Biaya Kilat / SKS */}
+          {/* Card Add-on 2: Biaya Prioritas & Layanan di Luar Jam Operasional */}
           <div className="neo-box p-6 sm:p-8 bg-white relative overflow-hidden flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-neo-blue fill-neo-blue" />
+                  <Clock className="h-5 w-5 text-neo-blue" />
                   <h4 className="font-heading font-black text-xl text-black">
-                    Biaya Kilat / SKS (Sistem Kebut Semalam)
+                    Biaya Prioritas &amp; Luar Jam Operasional
                   </h4>
                 </div>
                 <span className="neo-tag bg-neo-lime text-black font-mono text-[10px]">
-                  STANDBY 24/7
+                  TRANSPARAN &amp; FAIR
                 </span>
               </div>
 
-              <div className="inline-block bg-neo-lime px-2.5 py-1 border-2 border-black rounded shadow-neo-sm font-mono text-xs font-black text-black mb-4">
-                Solusi Panik Menjelang Deadline Subuh
+              <div className="inline-block bg-neo-yellow px-2.5 py-1 border-2 border-black rounded shadow-neo-sm font-mono text-xs font-black text-black mb-4">
+                Tarif Adil Proporsional Sesuai Tingkat Urgensi
               </div>
 
               <p className="text-xs sm:text-sm text-slate-700 font-medium mb-4">
-                Dosen tiba-tiba majuin deadline? Tugas kelompok ditinggal teman kabur? Kami punya tim shift malam khusus:
+                Deadline mepet atau butuh penanganan langsung saat larut malam? Kami menerapkan sistem biaya terjangkau &amp; transparan:
               </p>
 
-              <div className="space-y-3 mb-4">
-                <div className="p-3 border-2 border-black rounded-lg bg-slate-50 flex items-center justify-between gap-3">
+              {/* Grid Aturan Deadline & Luar Jam */}
+              <div className="space-y-2.5 mb-4">
+                {/* Rule A: >= 6 Jam */}
+                <div className="p-2.5 border-2 border-black rounded-lg bg-emerald-50/60 flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs font-black text-black">Deadline &lt; 24 Jam</p>
+                    <p className="text-xs font-black text-black">Deadline &ge; 6 Jam (Normal)</p>
                     <p className="text-[11px] text-slate-600 font-medium">
-                      Pengerjaan prioritas siang-malam berlanjut
+                      Waktu pengerjaan standar dan rileks
                     </p>
                   </div>
-                  <span className="neo-tag bg-blue-100 text-neo-blue font-black font-mono">
-                    +30% – 50%
+                  <span className="neo-tag bg-emerald-100 text-emerald-800 font-black font-mono text-xs">
+                    0% (GRATIS)
                   </span>
                 </div>
 
-                <div className="p-3 border-2 border-black rounded-lg bg-red-50/50 flex items-center justify-between gap-3">
+                {/* Rule B: 3 - 6 Jam */}
+                <div className="p-2.5 border-2 border-black rounded-lg bg-slate-50 flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs font-black text-black">Deadline &lt; 12 Jam (Ultra Kilat)</p>
+                    <p className="text-xs font-black text-black">Deadline 3–6 Jam</p>
                     <p className="text-[11px] text-slate-600 font-medium">
-                      Eksekusi non-stop instan oleh lead dev/writer
+                      Pengerjaan prioritas antrean terdepan
                     </p>
                   </div>
-                  <span className="neo-tag bg-red-100 text-red-700 font-black font-mono">
-                    +50% – 100%
+                  <span className="neo-tag bg-blue-100 text-neo-blue font-black font-mono text-xs">
+                    +10%
+                  </span>
+                </div>
+
+                {/* Rule C: 2 - 3 Jam */}
+                <div className="p-2.5 border-2 border-black rounded-lg bg-amber-50/60 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black text-black">Deadline 2–3 Jam</p>
+                    <p className="text-[11px] text-slate-600 font-medium">
+                      Fokus non-stop eksekusi tugas mendesak
+                    </p>
+                  </div>
+                  <span className="neo-tag bg-amber-100 text-amber-800 font-black font-mono text-xs">
+                    +20%
+                  </span>
+                </div>
+
+                {/* Rule D: < 2 Jam */}
+                <div className="p-2.5 border-2 border-black rounded-lg bg-red-50/60 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black text-black">Deadline &lt; 2 Jam (Darurat)</p>
+                    <p className="text-[11px] text-slate-600 font-medium">
+                      Maksimal +25% dengan verifikasi kesiapan admin
+                    </p>
+                  </div>
+                  <span className="neo-tag bg-red-100 text-red-800 font-black font-mono text-xs">
+                    +25% (Review Admin)
+                  </span>
+                </div>
+
+                {/* Rule E: Layanan Dini Hari */}
+                <div className="p-2.5 border-2 border-black rounded-lg bg-purple-50/60 flex items-center justify-between gap-3">
+                  <div className="flex items-start gap-1.5">
+                    <Moon className="h-3.5 w-3.5 text-purple-700 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs font-black text-black">Layanan Luar Jam Operasional</p>
+                      <p className="text-[11px] text-slate-600 font-medium">
+                        22.00–00.00 (+5%) &bull; 00.00–06.00 (+10%)
+                      </p>
+                    </div>
+                  </div>
+                  <span className="neo-tag bg-purple-100 text-purple-900 font-black font-mono text-xs">
+                    +5% / +10%
                   </span>
                 </div>
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-500 font-mono">
-              *Estimasi penambahan dihitung dari harga dasar tugas setelah brief diverifikasi lengkap.
-            </p>
+            <div className="pt-3 border-t-2 border-dashed border-slate-300">
+              <p className="text-[11px] text-slate-600 font-mono font-bold">
+                *Total biaya tambahan reguler maksimal 25% dari harga dasar. Biaya luar jam hanya berlaku jika pengerjaan diminta mulai langsung pada jam tersebut.
+              </p>
+            </div>
           </div>
 
         </div>

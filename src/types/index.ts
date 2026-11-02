@@ -42,14 +42,24 @@ export type OrderStatus =
   | "completed"
   | "cancelled";
 
+export type StartTimePreference = "asap" | "specific_time" | "regular_hours";
+
+export type PriorityStatus =
+  | "normal"
+  | "priority_pending_admin"
+  | "priority_approved"
+  | "priority_rejected";
+
 export interface DigitalTaskOrderInput {
   customerName: string;
-  customerContact: string; // WhatsApp or Email
+  customerContact: string;
   category: string;
   outputFormat: string;
   instructions: string;
   deadlineDate: string;
   includeLearnPackage: boolean;
+  startTimePreference?: StartTimePreference;
+  requestedStartTime?: string;
 }
 
 export interface HardwareServiceOrderInput {
@@ -60,6 +70,8 @@ export interface HardwareServiceOrderInput {
   deliveryMethod: "drop_off" | "home_service";
   expectedCompletionDate: string;
   acceptsDataDisclaimer: boolean;
+  startTimePreference?: StartTimePreference;
+  requestedStartTime?: string;
 }
 
 export interface AdminOrder {
@@ -84,6 +96,47 @@ export interface AdminOrder {
   internal_notes: string | null;
   created_at: string;
   updated_at: string;
+
+  // Priority & After-hours Fields
+  requested_deadline?: string | null;
+  requested_start_time?: string | null;
+  start_time_preference?: StartTimePreference | null;
+  deadline_surcharge_percent?: number | null;
+  after_hours_surcharge_percent?: number | null;
+  total_surcharge_percent?: number | null;
+  priority_status?: PriorityStatus | null;
+  priority_rejection_reason?: string | null;
+  admin_adjustment_reason?: string | null;
 }
 
+export interface QuotationCalculationSnapshot {
+  basePrice: number;
+  deadlineSurchargePercent: number;
+  deadlineSurchargeAmount: number;
+  afterHoursSurchargePercent: number;
+  afterHoursSurchargeAmount: number;
+  capAdjustmentAmount: number; // Diskon penyesuaian jika kombinasi > 25%
+  totalSurchargeAmount: number;
+  finalPrice: number;
+  dpAmount: number;
+  finalAmount: number;
+  adminCustomAdjustment?: {
+    percentage?: number;
+    amount?: number;
+    reason: string;
+  };
+}
 
+export interface QuotationRecord {
+  id: string;
+  order_id: string;
+  quotation_number: string;
+  total_amount: number;
+  dp_amount: number;
+  final_amount: number;
+  items: QuotationCalculationSnapshot;
+  valid_until?: string | null;
+  status: "draft" | "sent" | "accepted" | "rejected";
+  notes?: string | null;
+  created_at: string;
+}

@@ -14,7 +14,7 @@ export function Footer() {
               <BrandLogo size="default" />
             </div>
             <p className="text-xs sm:text-sm text-slate-700 font-medium leading-relaxed mb-5 max-w-sm">
-              Partner andalan solusi tugas akademik, skripsi, IT coding, dan konsultasi riset kilat dengan standar anti-plagiasi dan jaminan garansi tuntas.
+              Partner andalan solusi tugas akademik, skripsi, IT coding, dan konsultasi riset terpercaya dengan standar anti-plagiasi dan jaminan garansi tuntas.
             </p>
             <div className="flex flex-wrap gap-2">
               <span className="neo-tag bg-neo-lime text-black font-mono">
