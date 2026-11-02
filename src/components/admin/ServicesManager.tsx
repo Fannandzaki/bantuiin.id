@@ -371,8 +371,8 @@ export function ServicesManager({ initialServices }: ServicesManagerProps) {
 
       {/* Modal: Edit or Create Service */}
       {(editingService || isAddingNew) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="neo-box max-w-xl w-full bg-white max-h-[90vh] overflow-y-auto shadow-neo-lg p-6 sm:p-7">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm">
+          <div className="neo-box max-w-xl w-full bg-white max-h-[94vh] overflow-y-auto shadow-neo-lg p-3.5 sm:p-6 md:p-7">
             
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b-2 border-black mb-5">
@@ -532,7 +532,7 @@ export function ServicesManager({ initialServices }: ServicesManagerProps) {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-between pt-3 border-t border-slate-200">
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-slate-200">
                 {editingService ? (
                   <button
                     type="button"
@@ -541,27 +541,27 @@ export function ServicesManager({ initialServices }: ServicesManagerProps) {
                       handleCloseModal();
                       setDeletingService(toDelete);
                     }}
-                    className="py-2 px-3 text-xs font-mono font-bold text-red-600 hover:text-red-700 hover:bg-red-50 border border-transparent hover:border-red-300 rounded flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="w-full sm:w-auto justify-center py-2 px-3 text-xs font-mono font-bold text-red-600 hover:text-red-700 hover:bg-red-50 border border-transparent hover:border-red-300 rounded flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     <span>Hapus Layanan Ini</span>
                   </button>
                 ) : (
-                  <div />
+                  <div className="hidden sm:block" />
                 )}
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2">
                   <button
                     type="button"
                     onClick={handleCloseModal}
-                    className="neo-btn-white py-2 px-4 text-xs font-black"
+                    className="w-full sm:w-auto justify-center neo-btn-white py-2 px-4 text-xs font-black cursor-pointer text-center"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
                     disabled={isSaving}
-                    className="neo-btn-lime py-2 px-5 text-xs font-black flex items-center gap-1.5 disabled:opacity-50"
+                    className="w-full sm:w-auto justify-center neo-btn-lime py-2 px-5 text-xs font-black flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                   >
                     {isSaving ? (
                       <>
@@ -585,14 +585,14 @@ export function ServicesManager({ initialServices }: ServicesManagerProps) {
 
       {/* Delete Confirmation Modal */}
       {deletingService && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="neo-box max-w-md w-full bg-white shadow-neo-lg p-6 space-y-4 border-2 border-black animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm">
+          <div className="neo-box max-w-md w-full bg-white shadow-neo-lg p-4 sm:p-6 space-y-4 border-2 border-black animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3 text-red-600">
               <div className="p-2.5 border-2 border-black rounded-lg bg-red-100 shrink-0">
                 <AlertTriangle className="h-6 w-6 text-red-600" />
               </div>
               <div>
-                <h3 className="font-heading font-black text-lg text-black">
+                <h3 className="font-heading font-black text-base sm:text-lg text-black">
                   Hapus Layanan?
                 </h3>
                 <p className="text-xs text-slate-600 font-medium">
@@ -613,12 +613,12 @@ export function ServicesManager({ initialServices }: ServicesManagerProps) {
               Layanan ini akan dihapus secara permanen dari database Supabase dan tidak akan lagi muncul di katalog harga website publik.
             </p>
 
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t-2 border-black">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-3 border-t-2 border-black">
               <button
                 type="button"
                 disabled={isDeleting}
                 onClick={() => setDeletingService(null)}
-                className="neo-btn-white py-2 px-4 text-xs font-black cursor-pointer"
+                className="w-full sm:w-auto justify-center neo-btn-white py-2 px-4 text-xs font-black cursor-pointer text-center"
               >
                 Batal
               </button>
@@ -626,7 +626,7 @@ export function ServicesManager({ initialServices }: ServicesManagerProps) {
                 type="button"
                 disabled={isDeleting}
                 onClick={handleDelete}
-                className="py-2 px-4 text-xs font-black text-white bg-red-600 hover:bg-red-700 border-2 border-black rounded shadow-neo-sm flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+                className="w-full sm:w-auto justify-center py-2 px-4 text-xs font-black text-white bg-red-600 hover:bg-red-700 border-2 border-black rounded shadow-neo-sm flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {isDeleting ? (
                   <>

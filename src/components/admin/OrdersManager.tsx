@@ -345,11 +345,11 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
     <div className="space-y-6">
       
       {/* Top Filter Bar */}
-      <div className="neo-box p-4 bg-white shadow-neo-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="neo-box p-3.5 sm:p-4 bg-white shadow-neo-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
           
           {/* Search Input */}
-          <div className="relative flex-1 max-w-md">
+          <div className="relative w-full md:max-w-md">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
               <Search className="h-4 w-4" />
             </div>
@@ -363,8 +363,8 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
           </div>
 
           {/* Filters */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <div className="flex items-center gap-1.5 shrink-0">
               <Filter className="h-3.5 w-3.5 text-slate-600" />
               <span className="text-xs font-bold text-slate-700">Filter:</span>
             </div>
@@ -372,7 +372,7 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value as OrderType | "all")}
-              className="px-2.5 py-1.5 text-xs font-bold border-2 border-black rounded-lg bg-white focus:outline-none"
+              className="flex-1 sm:flex-initial px-2.5 py-1.5 text-xs font-bold border-2 border-black rounded-lg bg-white focus:outline-none"
             >
               <option value="all">Semua Tipe</option>
               <option value="digital_task">Tugas Digital</option>
@@ -382,7 +382,7 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as OrderStatus | "all")}
-              className="px-2.5 py-1.5 text-xs font-bold border-2 border-black rounded-lg bg-white focus:outline-none"
+              className="flex-1 sm:flex-initial px-2.5 py-1.5 text-xs font-bold border-2 border-black rounded-lg bg-white focus:outline-none"
             >
               <option value="all">Semua Status</option>
               {statusOptions.map((opt) => (
@@ -506,8 +506,8 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
 
       {/* Detail / Update Status Modal */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="neo-box max-w-3xl w-full bg-white max-h-[92vh] overflow-y-auto shadow-neo-lg p-6 sm:p-7">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm">
+          <div className="neo-box max-w-3xl w-full bg-white max-h-[95vh] overflow-y-auto shadow-neo-lg p-3.5 sm:p-6 md:p-7">
             
             {/* Modal Header */}
             <div className="flex items-start justify-between pb-4 border-b-2 border-black mb-5">
@@ -752,7 +752,7 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
                     type="button"
                     disabled={isCreatingQuotation}
                     onClick={handleCreateQuotation}
-                    className="neo-btn-lime py-2.5 px-5 text-xs font-black flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                    className="w-full sm:w-auto justify-center neo-btn-lime py-2.5 px-5 text-xs font-black flex items-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     {isCreatingQuotation ? (
                       <>
@@ -812,11 +812,11 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-2">
+                <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2">
                   <button
                     type="button"
                     onClick={() => setSelectedOrder(null)}
-                    className="neo-btn-white py-2 px-4 text-xs font-black cursor-pointer"
+                    className="w-full sm:w-auto justify-center neo-btn-white py-2 px-4 text-xs font-black cursor-pointer text-center"
                   >
                     Tutup
                   </button>
@@ -824,7 +824,7 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
                     type="button"
                     disabled={isUpdating}
                     onClick={handleUpdateStatus}
-                    className="neo-btn-dark py-2 px-5 text-xs font-black flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    className="w-full sm:w-auto justify-center neo-btn-dark py-2 px-5 text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
                     {isUpdating ? (
                       <>

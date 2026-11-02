@@ -166,24 +166,24 @@ export function PricingCatalogSection({ initialServices }: PricingCatalogSection
   ];
 
   return (
-    <section id="katalog-harga" className="py-20 bg-white border-b-2 border-black">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <section id="katalog-harga" className="py-16 sm:py-20 bg-white border-b-2 border-black">
+      <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-10">
-          <div className="neo-tag bg-white text-black font-mono mb-3">
+        <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-10">
+          <div className="neo-tag bg-white text-black font-mono mb-2 sm:mb-3 text-[10px] sm:text-xs">
             [TRANSPARANSI PENUH]
           </div>
-          <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-black text-black tracking-tight mb-3">
+          <h2 className="font-heading text-2xl sm:text-4xl lg:text-5xl font-black text-black tracking-tight mb-2 sm:mb-3">
             Katalog Harga &amp; Estimasi Pengerjaan
           </h2>
-          <p className="text-sm sm:text-base text-slate-700 font-medium">
+          <p className="text-xs sm:text-base text-slate-700 font-medium px-2">
             Harga realistis untuk kantong mahasiswa dengan jaminan kualitas tinggi. Bebas biaya tersembunyi.
           </p>
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex flex-wrap items-center justify-center gap-2 mb-12">
+        <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mb-8 sm:mb-12">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.key;
             return (
@@ -191,7 +191,7 @@ export function PricingCatalogSection({ initialServices }: PricingCatalogSection
                 key={tab.key}
                 type="button"
                 onClick={() => setActiveTab(tab.key)}
-                className={`neo-btn text-xs sm:text-sm font-black transition-all ${
+                className={`neo-btn py-1.5 sm:py-2 px-2.5 sm:px-4 text-[11px] sm:text-sm font-black transition-all cursor-pointer ${
                   isActive
                     ? "bg-neo-lime text-black shadow-neo"
                     : "bg-white text-slate-800 hover:bg-slate-100 shadow-neo-sm"
@@ -203,45 +203,45 @@ export function PricingCatalogSection({ initialServices }: PricingCatalogSection
           })}
         </div>
 
-        {/* Dynamic Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Dynamic Cards Grid - 2 cols on mobile, 2 cols on md, 3 cols on lg */}
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4 md:gap-6">
           {filteredItems.map((item) => (
             <div
               key={item.id}
-              className="neo-box p-6 bg-white flex flex-col justify-between transition-all hover:-translate-y-1 hover:shadow-neo-lg"
+              className="neo-box p-3 sm:p-5 md:p-6 bg-white flex flex-col justify-between transition-all hover:-translate-y-1 hover:shadow-neo-lg"
             >
               <div>
                 {/* Meta Badges */}
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <span className={`neo-tag font-mono text-[10px] ${item.badgeColor}`}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 mb-2 sm:mb-3">
+                  <span className={`neo-tag font-mono text-[9px] sm:text-[10px] w-fit py-0.5 px-1.5 ${item.badgeColor}`}>
                     {item.badge}
                   </span>
-                  <span className="font-mono text-xs font-bold text-slate-600">
+                  <span className="font-mono text-[9px] sm:text-xs font-bold text-slate-600">
                     {item.duration}
                   </span>
                 </div>
 
                 {/* Title & Desc */}
-                <h3 className="font-heading font-black text-lg text-black mb-2 leading-snug">
+                <h3 className="font-heading font-black text-xs sm:text-base md:text-lg text-black mb-1 sm:mb-2 leading-snug line-clamp-2">
                   {item.title}
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed mb-6">
+                <p className="text-[10px] sm:text-xs md:text-sm text-slate-600 font-medium leading-relaxed mb-3 sm:mb-6 line-clamp-2 sm:line-clamp-none">
                   {item.desc}
                 </p>
               </div>
 
               {/* Price & Action */}
-              <div>
-                <p className={`font-heading font-black text-xl mb-4 ${item.priceColor}`}>
+              <div className="pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                <p className={`font-heading font-black text-xs sm:text-base md:text-xl mb-2 sm:mb-4 ${item.priceColor}`}>
                   {item.price}
                 </p>
 
                 <Link
-                  href="#format-pemesanan"
-                  className="w-full neo-btn-white py-2.5 text-xs font-black flex items-center justify-center gap-1.5 group"
+                  href="#order-generator"
+                  className="w-full neo-btn-white py-1.5 sm:py-2.5 px-1.5 sm:px-3 text-[10px] sm:text-xs font-black flex items-center justify-center gap-1 group cursor-pointer"
                 >
-                  <span>Pilih Layanan Ini</span>
-                  <Zap className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
+                  <span className="truncate">Pilih Layanan</span>
+                  <Zap className="h-3 w-3 sm:h-3.5 sm:w-3.5 fill-amber-400 text-amber-500 shrink-0" />
                 </Link>
               </div>
             </div>

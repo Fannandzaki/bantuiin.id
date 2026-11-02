@@ -30,21 +30,21 @@ export default function AdminLoginPage() {
   );
 
   return (
-    <div className="min-h-screen bg-neo-surface flex flex-col justify-center items-center p-4 sm:p-6 font-body">
+    <div className="min-h-screen bg-neo-surface flex flex-col justify-center items-center p-3 sm:p-6 font-body">
       
       {/* Container Box */}
       <div className="w-full max-w-md">
         
         {/* Brand Header */}
-        <div className="text-center mb-6">
-          <div className="inline-flex justify-center mb-3">
+        <div className="text-center mb-5 sm:mb-6">
+          <div className="inline-flex justify-center mb-2 sm:mb-3">
             <BrandLogo size="default" />
           </div>
-          <div className="flex items-center justify-center gap-2">
-            <span className="neo-tag bg-neo-yellow text-black font-mono text-[11px]">
+          <div className="flex items-center justify-center gap-1.5 sm:gap-2">
+            <span className="neo-tag bg-neo-yellow text-black font-mono text-[10px] sm:text-[11px]">
               ADMINISTRATOR LOGIN
             </span>
-            <span className="neo-tag bg-neo-lime text-black font-mono text-[11px] flex items-center gap-1">
+            <span className="neo-tag bg-neo-lime text-black font-mono text-[10px] sm:text-[11px] flex items-center gap-1">
               <ShieldCheck className="h-3 w-3" />
               RESTRICTED AREA
             </span>
@@ -52,12 +52,12 @@ export default function AdminLoginPage() {
         </div>
 
         {/* Login Card */}
-        <div className="neo-box p-6 sm:p-8 bg-white shadow-neo-lg">
-          <div className="mb-6">
-            <h1 className="font-heading font-black text-2xl text-black">
+        <div className="neo-box p-4 sm:p-8 bg-white shadow-neo-lg">
+          <div className="mb-5 sm:mb-6">
+            <h1 className="font-heading font-black text-xl sm:text-2xl text-black">
               Masuk ke Console
             </h1>
-            <p className="text-xs sm:text-sm text-slate-600 font-medium mt-1">
+            <p className="text-[11px] sm:text-sm text-slate-600 font-medium mt-1">
               Kelola antrean tugas, penawaran harga, dan konfirmasi pembayaran BANTUIN.ID.
             </p>
           </div>

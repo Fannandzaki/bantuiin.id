@@ -45,18 +45,19 @@ export function AdminNav() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b-2 border-black bg-white">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-14 sm:h-16 max-w-7xl items-center justify-between px-3 sm:px-6 lg:px-8">
         
         {/* Left: Brand + Console Tag */}
-        <div className="flex items-center gap-3">
-          <BrandLogo size="default" />
-          <span className="neo-tag bg-neo-yellow text-black font-mono text-[10px] hidden sm:inline-block">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <BrandLogo size="small" className="sm:hidden" />
+          <BrandLogo size="default" className="hidden sm:inline-flex" />
+          <span className="neo-tag bg-neo-yellow text-black font-mono text-[9px] sm:text-[10px] hidden md:inline-block">
             ADMIN CONSOLE
           </span>
         </div>
 
-        {/* Center: Nav Links */}
-        <nav className="flex items-center gap-1 sm:gap-2">
+        {/* Center: Nav Links (Icon-only on mobile, full label on tablet/desktop) */}
+        <nav className="flex items-center gap-1 sm:gap-1.5 md:gap-2">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.exact
@@ -67,25 +68,26 @@ export function AdminNav() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`neo-btn py-1.5 px-3 text-xs font-black flex items-center gap-1.5 transition-all ${
+                className={`neo-btn py-1.5 px-2 sm:px-3 text-xs font-black flex items-center gap-1.5 transition-all ${
                   isActive
                     ? "bg-neo-lime text-black shadow-neo-sm"
                     : "bg-white text-slate-700 hover:bg-slate-50 shadow-none border-transparent hover:border-black"
                 }`}
+                title={item.label}
               >
-                <Icon className="h-3.5 w-3.5" />
-                <span>{item.label}</span>
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span className="hidden sm:inline">{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
         {/* Right: External Link & Logout */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <Link
             href="/"
             target="_blank"
-            className="neo-btn-white py-1.5 px-2.5 text-xs font-bold hidden md:inline-flex items-center gap-1"
+            className="neo-btn-white py-1.5 px-2 sm:px-2.5 text-xs font-bold hidden md:inline-flex items-center gap-1"
             title="Buka Website Publik"
           >
             <span>Lihat Web</span>
@@ -95,7 +97,7 @@ export function AdminNav() {
           <button
             type="button"
             onClick={handleLogout}
-            className="neo-btn-dark py-1.5 px-3 text-xs font-black flex items-center gap-1.5"
+            className="neo-btn-dark py-1.5 px-2 sm:px-3 text-xs font-black flex items-center gap-1.5 cursor-pointer"
             title="Keluar dari Admin Console"
           >
             <LogOut className="h-3.5 w-3.5" />
@@ -107,4 +109,3 @@ export function AdminNav() {
     </header>
   );
 }
-

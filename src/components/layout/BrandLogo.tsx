@@ -3,28 +3,32 @@ import Link from "next/link";
 
 interface BrandLogoProps {
   className?: string;
-  size?: "default" | "large";
+  size?: "small" | "default" | "large";
 }
 
 export function BrandLogo({ className = "", size = "default" }: BrandLogoProps) {
-  const dimensions =
-    size === "large"
-      ? "h-14 w-60 sm:h-16 sm:w-64"
-      : "h-11 w-48 sm:h-12 sm:w-52";
+  let dimensions = "h-8 w-32 sm:h-9 sm:w-36";
+
+  if (size === "large") {
+    dimensions = "h-11 w-44 sm:h-12 sm:w-48";
+  } else if (size === "default") {
+    dimensions = "h-8 w-32 sm:h-9 sm:w-36";
+  } else if (size === "small") {
+    dimensions = "h-7 w-28 sm:h-8 sm:w-32";
+  }
 
   return (
     <Link href="/" className={`inline-flex items-center group ${className}`}>
       <div className={`relative ${dimensions} transition-transform duration-150 group-hover:scale-105`}>
         <Image
-          src="/images/logo.png"
+          src="/images/logo-bantuiin.png"
           alt="Bantuiin.id"
           fill
           priority
           className="object-contain object-left"
-          sizes="(max-width: 768px) 200px, 260px"
+          sizes="(max-width: 768px) 150px, 200px"
         />
       </div>
     </Link>
   );
 }
-
