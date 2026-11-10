@@ -66,7 +66,7 @@ export async function createDigitalTaskOrder(
   }
 
   const data = validation.data;
-  const orderCode = generateOrderCode();
+  let orderCode = generateOrderCode();
 
   // Calculate priority & after-hours surcharge fields
   let requestedDeadlineIso: string | null = null;
@@ -108,34 +108,39 @@ export async function createDigitalTaskOrder(
       !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder-id");
 
     if (isConfigured) {
-      const { error } = await supabase.from("orders").insert({
-        order_code: orderCode,
-        order_type: "digital_task",
-        customer_name: data.name,
-        customer_contact: data.contact || "WhatsApp Direct",
-        service_category: data.category,
-        format_output: data.outputFormat,
-        instructions: data.instructions,
-        deadline: data.deadline,
-        include_learn_package: data.includeLearnPackage,
-        status: "new_inquiry",
-        requested_deadline: requestedDeadlineIso,
-        requested_start_time: requestedStartTimeIso,
-        start_time_preference: data.startTimePreference,
-        deadline_surcharge_percent: deadlineSurchargePercent,
-        after_hours_surcharge_percent: afterHoursSurchargePercent,
-        total_surcharge_percent: totalSurchargePercent,
-        priority_status: priorityStatus,
-      });
+      let inserted = false;
+      let attempts = 0;
+      let currentCode = orderCode;
 
-      if (error) {
-        console.error("Supabase insert error (digital task):", error.message);
-        return {
-          success: true,
-          orderCode,
-          priorityStatus,
-          totalSurchargePercent,
-        };
+      while (!inserted && attempts < 3) {
+        attempts++;
+        const { error } = await supabase.from("orders").insert({
+          order_code: currentCode,
+          order_type: "digital_task",
+          customer_name: data.name,
+          customer_contact: data.contact || "WhatsApp Direct",
+          service_category: data.category,
+          format_output: data.outputFormat,
+          instructions: data.instructions,
+          deadline: data.deadline,
+          include_learn_package: data.includeLearnPackage,
+          status: "new_inquiry",
+          requested_deadline: requestedDeadlineIso,
+          requested_start_time: requestedStartTimeIso,
+          start_time_preference: data.startTimePreference,
+          deadline_surcharge_percent: deadlineSurchargePercent,
+          after_hours_surcharge_percent: afterHoursSurchargePercent,
+          total_surcharge_percent: totalSurchargePercent,
+          priority_status: priorityStatus,
+        });
+
+        if (!error) {
+          inserted = true;
+          orderCode = currentCode;
+        } else {
+          console.warn(`Supabase digital task insert attempt ${attempts} warning:`, error.message);
+          currentCode = generateOrderCode();
+        }
       }
     }
 
@@ -182,7 +187,7 @@ export async function createHardwareServiceOrder(
   }
 
   const data = validation.data;
-  const orderCode = generateOrderCode();
+  let orderCode = generateOrderCode();
 
   let requestedDeadlineIso: string | null = null;
   let requestedStartTimeIso: string | null = null;
@@ -223,38 +228,43 @@ export async function createHardwareServiceOrder(
       !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder-id");
 
     if (isConfigured) {
-      const { error } = await supabase.from("orders").insert({
-        order_code: orderCode,
-        order_type: "hardware_service",
-        customer_name: data.name,
-        customer_contact: data.contact || "WhatsApp Direct",
-        service_category: data.issue,
-        instructions: `Servis Laptop: ${data.issue}`,
-        deadline: data.expectedCompletion,
-        hardware_details: {
-          laptop_model: data.laptopModel,
-          issue: data.issue,
-          delivery_method: data.deliveryMethod,
-          accepts_data_disclaimer: data.acceptsDataDisclaimer,
-        },
-        status: "new_inquiry",
-        requested_deadline: requestedDeadlineIso,
-        requested_start_time: requestedStartTimeIso,
-        start_time_preference: data.startTimePreference,
-        deadline_surcharge_percent: deadlineSurchargePercent,
-        after_hours_surcharge_percent: afterHoursSurchargePercent,
-        total_surcharge_percent: totalSurchargePercent,
-        priority_status: priorityStatus,
-      });
+      let inserted = false;
+      let attempts = 0;
+      let currentCode = orderCode;
 
-      if (error) {
-        console.error("Supabase insert error (hardware):", error.message);
-        return {
-          success: true,
-          orderCode,
-          priorityStatus,
-          totalSurchargePercent,
-        };
+      while (!inserted && attempts < 3) {
+        attempts++;
+        const { error } = await supabase.from("orders").insert({
+          order_code: currentCode,
+          order_type: "hardware_service",
+          customer_name: data.name,
+          customer_contact: data.contact || "WhatsApp Direct",
+          service_category: data.issue,
+          instructions: `Servis Laptop: ${data.issue}`,
+          deadline: data.expectedCompletion,
+          hardware_details: {
+            laptop_model: data.laptopModel,
+            issue: data.issue,
+            delivery_method: data.deliveryMethod,
+            accepts_data_disclaimer: data.acceptsDataDisclaimer,
+          },
+          status: "new_inquiry",
+          requested_deadline: requestedDeadlineIso,
+          requested_start_time: requestedStartTimeIso,
+          start_time_preference: data.startTimePreference,
+          deadline_surcharge_percent: deadlineSurchargePercent,
+          after_hours_surcharge_percent: afterHoursSurchargePercent,
+          total_surcharge_percent: totalSurchargePercent,
+          priority_status: priorityStatus,
+        });
+
+        if (!error) {
+          inserted = true;
+          orderCode = currentCode;
+        } else {
+          console.warn(`Supabase hardware insert attempt ${attempts} warning:`, error.message);
+          currentCode = generateOrderCode();
+        }
       }
     }
 

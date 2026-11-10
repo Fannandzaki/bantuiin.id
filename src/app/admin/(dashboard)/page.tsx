@@ -24,7 +24,10 @@ export default async function AdminDashboardPage() {
   ).length;
   const inProgress = orders.filter((o) => o.status === "in_progress").length;
   const completed = orders.filter((o) => o.status === "completed").length;
-  const totalRevenue = orders.reduce((acc, curr) => acc + (curr.total_price || 0), 0);
+  // Safe Financial Metric: Only count confirmed active/completed orders; strictly exclude cancelled orders and raw inquiries
+  const totalRevenue = orders
+    .filter((o) => o.status === "completed" || o.status === "in_progress" || o.status === "awaiting_final_payment")
+    .reduce((acc, curr) => acc + (curr.total_price || 0), 0);
 
   const statusBadge = (status: string) => {
     switch (status) {
