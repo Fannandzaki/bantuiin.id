@@ -166,24 +166,24 @@ export function PricingCatalogSection({ initialServices }: PricingCatalogSection
   ];
 
   return (
-    <section id="katalog-harga" className="py-16 sm:py-20 bg-white border-b-2 border-black">
+    <section id="katalog-harga" className="py-10 sm:py-16 md:py-20 bg-white border-b-2 border-black">
       <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-10">
-          <div className="neo-tag bg-white text-black font-mono mb-2 sm:mb-3 text-[10px] sm:text-xs">
+        <div className="text-center max-w-3xl mx-auto mb-6 sm:mb-10">
+          <div className="neo-tag bg-white text-black font-mono mb-1.5 sm:mb-3 text-[10px] sm:text-xs">
             [TRANSPARANSI PENUH]
           </div>
-          <h2 className="font-heading text-2xl sm:text-4xl lg:text-5xl font-black text-black tracking-tight mb-2 sm:mb-3">
+          <h2 className="font-heading text-xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-black tracking-tight mb-1.5 sm:mb-3">
             Katalog Harga &amp; Estimasi Pengerjaan
           </h2>
-          <p className="text-xs sm:text-base text-slate-700 font-medium px-2">
+          <p className="text-xs sm:text-base text-slate-700 font-medium px-2 max-w-xl mx-auto">
             Harga realistis untuk kantong mahasiswa dengan jaminan kualitas tinggi. Bebas biaya tersembunyi.
           </p>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mb-8 sm:mb-12">
+        {/* Filter Tabs - Horizontal scrollable on mobile, centered on larger screens */}
+        <div className="flex items-center sm:justify-center overflow-x-auto no-scrollbar gap-1.5 sm:gap-2 mb-6 sm:mb-10 pb-2 sm:pb-0 px-1 -mx-1 sm:mx-0">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.key;
             return (
@@ -191,7 +191,7 @@ export function PricingCatalogSection({ initialServices }: PricingCatalogSection
                 key={tab.key}
                 type="button"
                 onClick={() => setActiveTab(tab.key)}
-                className={`neo-btn py-1.5 sm:py-2 px-2.5 sm:px-4 text-[11px] sm:text-sm font-black transition-all cursor-pointer ${
+                className={`neo-btn shrink-0 whitespace-nowrap py-1.5 sm:py-2 px-3 sm:px-4 text-xs sm:text-sm font-black transition-all cursor-pointer ${
                   isActive
                     ? "bg-neo-lime text-black shadow-neo"
                     : "bg-white text-slate-800 hover:bg-slate-100 shadow-neo-sm"

@@ -58,6 +58,15 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   .neo-pill {
     @apply inline-flex items-center font-mono text-xs font-black uppercase tracking-wider px-3.5 py-1 border-2 border-black rounded-full shadow-[2px_2px_0px_#000];
   }
+
+  /* Utility to hide scrollbars while allowing touch/scroll */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 /* Ticker marquee animation */
