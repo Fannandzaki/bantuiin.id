@@ -19,7 +19,7 @@ export function Navbar() {
             Layanan
           </Link>
           <Link
-            href="#katalog-harga"
+            href="#kalkulator-harga"
             className="hover:text-neo-blue transition-colors"
           >
             Cek Harga
@@ -41,7 +41,7 @@ export function Navbar() {
         {/* CTA Button */}
         <div className="flex items-center gap-2">
           <Link
-            href="#order-generator"
+            href="#format-pemesanan"
             className="neo-btn-lime px-3 sm:px-4 py-1.5 sm:py-2 text-xs font-black flex items-center gap-1.5"
           >
             <span>Konsultasi</span>

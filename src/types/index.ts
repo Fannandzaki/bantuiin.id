@@ -29,6 +29,88 @@ export interface ServiceItem {
   estimatedDuration: string;
 }
 
+export type PricingMethod =
+  | "per_unit"
+  | "per_package"
+  | "per_document"
+  | "complexity_range"
+  | "manual_quotation";
+
+export interface CalculatorServiceConfig {
+  id: string;
+  categoryId: ServiceCategoryKey;
+  title: string;
+  description: string;
+  pricingMethod: PricingMethod;
+  unitName?: string;
+  defaultQuantity?: number;
+  minQuantity?: number;
+  maxQuantity?: number;
+  minPrice: number;
+  maxPrice: number;
+  packageLimit?: number;
+  packageNote?: string;
+  basePackageQuantity?: number;
+  extraUnitPriceMin?: number;
+  extraUnitPriceMax?: number;
+  hasReferencesInput?: boolean;
+  defaultReferences?: number;
+  maxReferences?: number;
+  baseIncludedReferences?: number;
+  extraReferencePrice?: number;
+  allowLearnPackage?: boolean;
+  estimatedDuration: string;
+  badgeLabel?: string;
+  infoParams?: {
+    label: string;
+    placeholder: string;
+    defaultValue?: string;
+  }[];
+}
+
+export interface PriceCalculationResult {
+  isManualQuotation: boolean;
+  isInvalidDeadline?: boolean;
+  baseMinPrice: number;
+  baseMaxPrice: number;
+  surchargePercent: number;
+  deadlineSurchargePercent: number;
+  afterHoursSurchargePercent: number;
+  surchargeMinAmount: number;
+  surchargeMaxAmount: number;
+  learnPackageMinAmount: number;
+  learnPackageMaxAmount: number;
+  totalMinPrice: number;
+  totalMaxPrice: number;
+  requiresAdminApproval: boolean;
+  isOutsidePackage: boolean;
+  packageWarning?: string;
+  priceRangeFormatted: string;
+  deadlineTierLabel: string;
+  afterHoursTierLabel: string;
+  effectiveHoursRemaining?: number;
+  effectiveStartTimeFormatted?: string;
+  baseCalculationDetail?: string;
+}
+
+export interface CalculatorPrefillEventData {
+  orderType: "task" | "hardware";
+  categoryId: ServiceCategoryKey;
+  serviceId: string;
+  serviceTitle: string;
+  quantity?: number;
+  unitName?: string;
+  referencesCount?: number;
+  deadlineIso: string;
+  deadlineFormatted: string;
+  startTimePreference: StartTimePreference;
+  requestedStartTime?: string;
+  includeLearnPackage: boolean;
+  priceEstimateText: string;
+  surchargeSummaryText: string;
+  infoNotes?: string;
+}
+
 export type OrderType = "digital_task" | "hardware_service";
 
 export type OrderStatus =

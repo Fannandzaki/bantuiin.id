@@ -18,7 +18,7 @@ export function getJakartaHour(date: Date = new Date()): number {
 }
 
 /**
- * Calculates remaining hours from reference time (now) to deadline.
+ * Calculates remaining hours from reference time (now or effective start time) to deadline.
  */
 export function calculateRemainingHours(
   deadline: Date | string,
@@ -31,9 +31,61 @@ export function calculateRemainingHours(
 }
 
 /**
+ * Calculates the effective start time of work based on preference and current time in WIB.
+ */
+export function calculateEffectiveStartTime(
+  preference: StartTimePreference = "asap",
+  requestedStartTime?: Date | string | null,
+  referenceNow: Date = new Date()
+): Date {
+  if (preference === "asap") {
+    return referenceNow;
+  }
+
+  if (preference === "specific_time" && requestedStartTime) {
+    const parsed = typeof requestedStartTime === "string" ? new Date(requestedStartTime) : requestedStartTime;
+    if (!isNaN(parsed.getTime())) {
+      return parsed;
+    }
+    return referenceNow;
+  }
+
+  if (preference === "regular_hours") {
+    const jakartaHour = getJakartaHour(referenceNow);
+    // Regular business hours: 06.00 to 21.59 WIB
+    if (jakartaHour >= 6 && jakartaHour < 22) {
+      return referenceNow;
+    }
+
+    // Outside regular hours: next window starts at 06.00 WIB
+    const nextStart = new Date(referenceNow);
+    if (jakartaHour >= 22) {
+      nextStart.setDate(nextStart.getDate() + 1);
+    }
+
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Jakarta",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const parts = formatter.formatToParts(nextStart);
+    const year = parts.find((p) => p.type === "year")?.value;
+    const month = parts.find((p) => p.type === "month")?.value;
+    const day = parts.find((p) => p.type === "day")?.value;
+    const next06WibIso = `${year}-${month}-${day}T06:00:00+07:00`;
+    const parsed06 = new Date(next06WibIso);
+    return isNaN(parsed06.getTime()) ? nextStart : parsed06;
+  }
+
+  return referenceNow;
+}
+
+/**
  * Evaluates deadline surcharge percentage and determines whether admin approval is mandatory.
  *
  * Rules:
+ * - <= 0 hours: 0% (Deadline tidak valid / sudah lewat)
  * - >= 6 hours: 0% (Normal)
  * - 3 to < 6 hours: +10%
  * - 2 to < 3 hours: +20%
@@ -43,19 +95,28 @@ export function getDeadlineSurcharge(hoursRemaining: number): {
   percent: number;
   requiresAdminApproval: boolean;
   tierLabel: string;
+  isInvalid?: boolean;
 } {
-  if (hoursRemaining >= 6) {
-    return { percent: 0, requiresAdminApproval: false, tierLabel: "Normal (>= 6 Jam)" };
+  if (hoursRemaining <= 0) {
+    return {
+      percent: 0,
+      requiresAdminApproval: false,
+      tierLabel: "Deadline Tidak Valid (Waktu Telah Lewat)",
+      isInvalid: true,
+    };
+  } else if (hoursRemaining >= 6) {
+    return { percent: 0, requiresAdminApproval: false, tierLabel: "Normal (>= 6 Jam)", isInvalid: false };
   } else if (hoursRemaining >= 3) {
-    return { percent: 10, requiresAdminApproval: false, tierLabel: "Prioritas 3–6 Jam (+10%)" };
+    return { percent: 10, requiresAdminApproval: false, tierLabel: "Prioritas 3–6 Jam (+10%)", isInvalid: false };
   } else if (hoursRemaining >= 2) {
-    return { percent: 20, requiresAdminApproval: false, tierLabel: "Mendesak 2–3 Jam (+20%)" };
+    return { percent: 20, requiresAdminApproval: false, tierLabel: "Mendesak 2–3 Jam (+20%)", isInvalid: false };
   } else {
     // Under 2 hours
     return {
       percent: 25,
       requiresAdminApproval: true,
       tierLabel: "Darurat < 2 Jam (+25% Wajib Review Admin)",
+      isInvalid: false,
     };
   }
 }
@@ -131,7 +192,8 @@ export function calculateOrderPricing({
   afterHoursTierLabel: string;
 } {
   const safeBasePrice = Math.max(0, Math.round(basePrice));
-  const hoursRemaining = calculateRemainingHours(deadline, referenceNow);
+  const effectiveStartTime = calculateEffectiveStartTime(startTimePreference, requestedStartTime, referenceNow);
+  const hoursRemaining = calculateRemainingHours(deadline, effectiveStartTime);
 
   // 1. Deadline surcharge
   const deadlineResult = getDeadlineSurcharge(hoursRemaining);
@@ -139,7 +201,7 @@ export function calculateOrderPricing({
   const deadlineSurchargeAmount = Math.round((safeBasePrice * deadlineSurchargePercent) / 100);
 
   // 2. After-hours surcharge
-  const afterHoursResult = getAfterHoursSurcharge(startTimePreference, requestedStartTime, referenceNow);
+  const afterHoursResult = getAfterHoursSurcharge(startTimePreference, effectiveStartTime, referenceNow);
   const afterHoursSurchargePercent = afterHoursResult.percent;
   const afterHoursSurchargeAmount = Math.round((safeBasePrice * afterHoursSurchargePercent) / 100);
 

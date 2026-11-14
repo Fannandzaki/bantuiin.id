@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
+import { PriceCalculatorSection } from "@/components/home/PriceCalculatorSection";
+import { OrderGeneratorSection } from "@/components/home/OrderGeneratorSection";
 import { PillarsSection } from "@/components/home/PillarsSection";
 import { PricingCatalogSection } from "@/components/home/PricingCatalogSection";
 import { WorkflowSection } from "@/components/home/WorkflowSection";
-import { OrderGeneratorSection } from "@/components/home/OrderGeneratorSection";
 import { TermsAndReferralSection } from "@/components/home/TermsAndReferralSection";
 import { Footer } from "@/components/layout/Footer";
 import { getDynamicServices } from "@/app/actions/services";
@@ -73,11 +74,11 @@ export default async function HomePage() {
                 </Link>
 
                 <Link
-                  href="#katalog-harga"
+                  href="#kalkulator-harga"
                   className="neo-btn-white py-3.5 px-6 text-sm sm:text-base font-black flex items-center gap-2"
                 >
                   <Calculator className="h-4 w-4 text-slate-700" />
-                  <span>Simulasi &amp; Lihat Harga</span>
+                  <span>Simulasi &amp; Hitung Harga</span>
                 </Link>
               </div>
 
@@ -208,22 +209,25 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 4. Pilar Solusi & Add-ons */}
-      <PillarsSection />
+      {/* 4. Interactive Price Calculator */}
+      <PriceCalculatorSection />
 
-      {/* 5. Katalog Harga & Estimasi Pengerjaan */}
-      <PricingCatalogSection initialServices={dynamicServices} />
-
-      {/* 6. 5 Langkah Pasti Tanpa Drama (Workflow) */}
-      <WorkflowSection />
-
-      {/* 7. Generator Format Order Otomatis ke WhatsApp */}
+      {/* 5. Generator Format Order Otomatis ke WhatsApp */}
       <OrderGeneratorSection />
 
-      {/* 8. Aturan Main Adil & Transparan (ToS + Referral) */}
+      {/* 6. Pilar Solusi & Add-ons */}
+      <PillarsSection />
+
+      {/* 7. Katalog Layanan Detail & Estimasi Pengerjaan */}
+      <PricingCatalogSection initialServices={dynamicServices} />
+
+      {/* 8. 5 Langkah Pasti Tanpa Drama (Workflow) */}
+      <WorkflowSection />
+
+      {/* 9. Aturan Main Adil & Transparan (ToS + Referral) */}
       <TermsAndReferralSection />
 
-      {/* 9. Footer */}
+      {/* 10. Footer */}
       <Footer />
     </div>
   );

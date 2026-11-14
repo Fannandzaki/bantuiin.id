@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Laptop,
   FileCode,
@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Clock,
   Moon,
+  Sparkles,
 } from "lucide-react";
 import {
   createDigitalTaskOrder,
@@ -19,7 +20,8 @@ import {
   calculateOrderPricing,
   formatJakartaDateTime,
 } from "@/lib/pricing/priority-calculator";
-import { StartTimePreference } from "@/types";
+import { StartTimePreference, CalculatorPrefillEventData } from "@/types";
+import { buildWhatsAppUrl } from "@/lib/whatsapp";
 
 // Helper to get formatted default date 48h from now for datetime-local
 function getDefaultDeadlineLocal(): string {
@@ -65,6 +67,50 @@ export function OrderGeneratorSection() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [prefillNotice, setPrefillNotice] = useState<string | null>(null);
+
+  // Listen to interactive calculator prefill event
+  useEffect(() => {
+    const handlePrefill = (e: Event) => {
+      const customEvent = e as CustomEvent<CalculatorPrefillEventData>;
+      const data = customEvent.detail;
+      if (!data) return;
+
+      if (data.orderType === "hardware") {
+        setOrderType("hardware");
+        setHardwareForm((prev) => ({
+          ...prev,
+          issue: data.serviceTitle,
+          deadlineInput: data.deadlineIso.slice(0, 16),
+          startTimePreference: data.startTimePreference,
+          requestedStartTime: data.requestedStartTime || "",
+        }));
+        setPrefillNotice(`Form telah terisi otomatis dari Kalkulator: ${data.serviceTitle} (${data.priceEstimateText})`);
+      } else {
+        setOrderType("task");
+        setTaskForm((prev) => ({
+          ...prev,
+          category: data.serviceTitle,
+          deadlineInput: data.deadlineIso.slice(0, 16),
+          startTimePreference: data.startTimePreference,
+          requestedStartTime: data.requestedStartTime || "",
+          includeLearnPackage: data.includeLearnPackage,
+          instructions: data.quantity
+            ? `[SIMULASI HARGA BANTUIIN]\nLayanan: ${data.serviceTitle} (${data.quantity} ${data.unitName || "unit"}${data.referencesCount ? `, ${data.referencesCount} Jurnal` : ""})\n${data.infoNotes ? `Detail: ${data.infoNotes}\n` : ""}Estimasi Biaya: ${data.priceEstimateText}\nBiaya Tambahan: ${data.surchargeSummaryText}`
+            : `[SIMULASI HARGA BANTUIIN]\nLayanan: ${data.serviceTitle}\n${data.infoNotes ? `Detail: ${data.infoNotes}\n` : ""}Estimasi Biaya: ${data.priceEstimateText}\nBiaya Tambahan: ${data.surchargeSummaryText}`,
+        }));
+        setPrefillNotice(`Form telah terisi otomatis dari Kalkulator: ${data.serviceTitle} (${data.priceEstimateText})`);
+      }
+
+      // Auto-clear notice after 8 seconds
+      setTimeout(() => setPrefillNotice(null), 8000);
+    };
+
+    window.addEventListener("bantuiin:prefill-order", handlePrefill);
+    return () => {
+      window.removeEventListener("bantuiin:prefill-order", handlePrefill);
+    };
+  }, []);
 
   // Active form data according to tab
   const activeDeadline = orderType === "task" ? taskForm.deadlineInput : hardwareForm.deadlineInput;
@@ -208,12 +254,7 @@ export function OrderGeneratorSection() {
       setTimeout(() => setCopied(false), 3000);
 
       // Open WhatsApp official
-      const cleanPhone = (
-        process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "6281234567890"
-      ).replace(/[^0-9]/g, "");
-      const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(
-        finalMsg
-      )}`;
+      const waUrl = buildWhatsAppUrl(finalMsg);
       window.open(waUrl, "_blank");
     } catch (err) {
       console.error(err);
@@ -224,20 +265,28 @@ export function OrderGeneratorSection() {
   };
 
   return (
-    <section id="order-generator" className="py-20 bg-neo-yellow/30 border-b-2 border-black">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <section id="format-pemesanan" className="py-16 sm:py-20 bg-neo-yellow/30 border-b-2 border-black scroll-mt-16">
+      <div id="order-generator" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-12">
+        <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
           <span className="neo-tag bg-neo-lime text-black font-mono text-xs mb-3">
             INTERACTIVE ORDER GENERATOR
           </span>
-          <h2 className="font-heading font-black text-3xl sm:text-4xl text-black uppercase tracking-tight">
+          <h2 className="font-heading font-black text-2xl sm:text-4xl text-black uppercase tracking-tight">
             Buat Format Pesanan Sekali Klik
           </h2>
-          <p className="mt-3 text-xs sm:text-sm text-slate-700 font-medium">
+          <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-slate-700 font-medium">
             Pilih layanan, tentukan deadline dan waktu mulai pengerjaan. Sistem otomatis menghitung estimasi biaya prioritas secara adil dan transparan.
           </p>
+
+          {/* Prefill from Calculator Notice */}
+          {prefillNotice && (
+            <div className="mt-4 p-3 bg-white border-2 border-black rounded shadow-neo text-xs text-black font-bold flex items-center justify-center gap-2 animate-bounce">
+              <Sparkles className="h-4 w-4 text-amber-500 shrink-0" />
+              <span>{prefillNotice}</span>
+            </div>
+          )}
         </div>
 
         {/* Main Box */}
@@ -329,6 +378,17 @@ export function OrderGeneratorSection() {
                           }
                           className="w-full px-3.5 py-2.5 text-sm font-medium border-2 border-black rounded-lg bg-white focus:outline-none"
                         >
+                          {![
+                            "Coding Web / Laravel / PHP",
+                            "Database & SQL Query",
+                            "Algoritma & OOP (Python/Java/C++)",
+                            "UI/UX Design Figma",
+                            "Slide Presentasi Sidang & PPT",
+                            "Formatting Word + Sitasi Mendeley",
+                            "Olah Data Excel Lanjutan",
+                          ].includes(taskForm.category) && (
+                            <option value={taskForm.category}>{taskForm.category}</option>
+                          )}
                           <option>Coding Web / Laravel / PHP</option>
                           <option>Database &amp; SQL Query</option>
                           <option>Algoritma &amp; OOP (Python/Java/C++)</option>
@@ -529,6 +589,14 @@ export function OrderGeneratorSection() {
                           }
                           className="w-full px-3.5 py-2.5 text-sm font-medium border-2 border-black rounded-lg bg-white focus:outline-none"
                         >
+                          {![
+                            "Cleaning Fan + Repaste Thermal Paste Overheat",
+                            "Install Ulang Windows/Linux + Office/CAD",
+                            "Upgrade SSD/RAM + Clone Sistem Operasi",
+                            "Troubleshoot Blue Screen (BSOD) & Malware",
+                          ].includes(hardwareForm.issue) && (
+                            <option value={hardwareForm.issue}>{hardwareForm.issue}</option>
+                          )}
                           <option>Cleaning Fan + Repaste Thermal Paste Overheat</option>
                           <option>Install Ulang Windows/Linux + Office/CAD</option>
                           <option>Upgrade SSD/RAM + Clone Sistem Operasi</option>
