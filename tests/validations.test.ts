@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   digitalTaskOrderSchema,
   hardwareServiceOrderSchema,
+  normalizeIndonesianPhone,
 } from "@/lib/validations/order";
 
 describe("MODUL B: Input Validation & Boundary Security Testing", () => {
@@ -88,6 +89,37 @@ describe("MODUL B: Input Validation & Boundary Security Testing", () => {
       if (result.success) {
         // Data parsed as literal string data, not executable
         expect(result.data.name).toContain("<script>");
+      }
+    });
+
+    it("TC-REM-01: should validate Indonesian WhatsApp format and normalize cleanly", () => {
+      const validNumbers = ["081234567890", "+6281234567890", "6289912345678"];
+      for (const num of validNumbers) {
+        const res = digitalTaskOrderSchema.safeParse({
+          name: "Budi",
+          contact: num,
+          category: "Coding",
+          outputFormat: "ZIP",
+          instructions: "Instruksi yang panjang dan jelas",
+          deadline: "Besok",
+        });
+        expect(res.success).toBe(true);
+        expect(normalizeIndonesianPhone(num)).toMatch(/^628\d{8,11}$/);
+      }
+    });
+
+    it("TC-REM-02: should reject invalid phone formats", () => {
+      const invalidNumbers = ["12345", "0217654321", "abcdefghij", "0711123456"];
+      for (const num of invalidNumbers) {
+        const res = digitalTaskOrderSchema.safeParse({
+          name: "Budi",
+          contact: num,
+          category: "Coding",
+          outputFormat: "ZIP",
+          instructions: "Instruksi yang panjang dan jelas",
+          deadline: "Besok",
+        });
+        expect(res.success).toBe(false);
       }
     });
   });

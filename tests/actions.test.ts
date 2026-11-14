@@ -33,8 +33,13 @@ vi.mock("@/lib/supabase/server", () => ({
 
 import { createDigitalTaskOrder } from "@/app/actions/orders";
 import { getAdminOrders, updateOrderStatusAction, createQuotationAction } from "@/app/actions/admin-orders";
+import { getOrderPayments, recordPaymentAction, verifyPaymentAction } from "@/app/actions/payments";
 
 describe("MODUL E: Server Actions & Security Guard Testing", () => {
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://mock-proj.supabase.co";
+  });
+
   describe("1. Order Creation Server Action", () => {
     it("should reject invalid order input before database interaction", async () => {
       const invalidData = {
@@ -66,8 +71,30 @@ describe("MODUL E: Server Actions & Security Guard Testing", () => {
 
       const res = await createDigitalTaskOrder(validData);
       expect(res.success).toBe(true);
+      expect(res.persistedToDatabase).toBe(true);
       expect(res.orderCode).toMatch(/^BANTU-\d{4}-[A-Z0-9]{4}$/);
       expect(res.totalSurchargePercent).toBeDefined();
+    });
+
+    it("TC-REM-03: should return fallback offline draft code if database is unconfigured", async () => {
+      delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+      const validData = {
+        name: "Test Customer",
+        contact: "081299998888",
+        category: "Coding Web / Laravel / PHP",
+        outputFormat: ".ZIP + Database SQL",
+        instructions: "Tolong buatkan sistem inventaris barang mini dengan 3 tabel database.",
+        deadline: new Date(Date.now() + 5 * 3600 * 1000).toISOString(),
+        includeLearnPackage: false,
+        startTimePreference: "asap" as const,
+      };
+
+      const res = await createDigitalTaskOrder(validData);
+      expect(res.success).toBe(true);
+      expect(res.persistedToDatabase).toBe(false);
+      expect(res.orderCode).toMatch(/^DRAFT-\d{4}-[A-Z0-9]{4}$/);
+      expect(res.warning).toBeDefined();
     });
   });
 
@@ -88,6 +115,27 @@ describe("MODUL E: Server Actions & Security Guard Testing", () => {
         orderId: "dummy-order-id",
         basePrice: 150000,
       });
+      expect(res.success).toBe(false);
+      expect(res.error).toBeDefined();
+    });
+
+    it("TC-REM-04: getOrderPayments must reject unauthenticated requests", async () => {
+      const payments = await getOrderPayments("dummy-order-id");
+      expect(payments).toEqual([]);
+    });
+
+    it("TC-REM-05: recordPaymentAction must reject unauthenticated requests", async () => {
+      const res = await recordPaymentAction({
+        orderId: "dummy-order-id",
+        paymentType: "dp",
+        amount: 50000,
+      });
+      expect(res.success).toBe(false);
+      expect(res.error).toBeDefined();
+    });
+
+    it("TC-REM-06: verifyPaymentAction must reject unauthenticated requests", async () => {
+      const res = await verifyPaymentAction("dummy-payment-id", "verified", "dummy-order-id");
       expect(res.success).toBe(false);
       expect(res.error).toBeDefined();
     });

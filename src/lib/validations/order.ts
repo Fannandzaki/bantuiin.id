@@ -1,5 +1,22 @@
 import { z } from "zod";
 
+export const indonesianPhoneRegex = /^(?:\+62|62|0)8[1-9][0-9]{7,11}$/;
+
+export function normalizeIndonesianPhone(phone?: string | null): string {
+  if (!phone) return "WhatsApp Direct";
+  const cleaned = phone.replace(/[^0-9]/g, "");
+  if (cleaned.startsWith("0")) {
+    return "62" + cleaned.slice(1);
+  }
+  if (cleaned.startsWith("62")) {
+    return cleaned;
+  }
+  if (cleaned.startsWith("8")) {
+    return "62" + cleaned;
+  }
+  return cleaned || "WhatsApp Direct";
+}
+
 export const digitalTaskOrderSchema = z.object({
   name: z
     .string()
@@ -9,6 +26,9 @@ export const digitalTaskOrderSchema = z.object({
   contact: z
     .string()
     .trim()
+    .refine((val) => !val || indonesianPhoneRegex.test(val), {
+      message: "Format nomor WhatsApp tidak valid (Contoh: 08123456789 atau 628123456789)",
+    })
     .optional(),
   category: z
     .string()
@@ -42,6 +62,9 @@ export const hardwareServiceOrderSchema = z.object({
   contact: z
     .string()
     .trim()
+    .refine((val) => !val || indonesianPhoneRegex.test(val), {
+      message: "Format nomor WhatsApp tidak valid (Contoh: 08123456789 atau 628123456789)",
+    })
     .optional(),
   issue: z
     .string()

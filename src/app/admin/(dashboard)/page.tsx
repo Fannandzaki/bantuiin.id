@@ -255,7 +255,7 @@ export default async function AdminDashboardPage() {
                       </td>
                       <td className="p-3 sm:p-3.5 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-1.5">
-                          {order.customer_contact && (
+                          {order.customer_contact && order.customer_contact.replace(/[^0-9]/g, "").length >= 9 ? (
                             <a
                               href={`https://wa.me/${order.customer_contact.replace(/[^0-9]/g, "")}`}
                               target="_blank"
@@ -266,7 +266,7 @@ export default async function AdminDashboardPage() {
                               <MessageCircle className="h-3 w-3" />
                               <span className="hidden sm:inline">WA</span>
                             </a>
-                          )}
+                          ) : null}
                           <Link
                             href="/admin/pesanan"
                             className="neo-btn-white py-1 px-2 text-[11px] font-mono"

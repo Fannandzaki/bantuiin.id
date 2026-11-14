@@ -42,6 +42,7 @@ export function OrderGeneratorSection() {
   // State for Digital Task Form
   const [taskForm, setTaskForm] = useState({
     name: "Mahasiswa Hebat",
+    contact: "081234567890",
     category: "Coding Web / Laravel / PHP",
     outputFormat: ".ZIP (Source Code) + .SQL",
     instructions: "Bikin sistem kasir mini ada CRUD produk dan laporan transaksi harian.",
@@ -54,6 +55,7 @@ export function OrderGeneratorSection() {
   // State for Hardware Service Form
   const [hardwareForm, setHardwareForm] = useState({
     name: "Mahasiswa Hebat",
+    contact: "081234567890",
     issue: "Cleaning Fan + Repaste Thermal Paste Overheat",
     laptopModel: "Asus ROG Zephyrus / Lenovo Legion",
     deliveryMethod: "Drop-off ke Lokasi Admin",
@@ -64,6 +66,8 @@ export function OrderGeneratorSection() {
   });
 
   const [registeredOrderCode, setRegisteredOrderCode] = useState<string | null>(null);
+  const [persistedToDb, setPersistedToDb] = useState<boolean | null>(null);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -164,6 +168,7 @@ export function OrderGeneratorSection() {
         `Halo Tim bantuiin.id, saya mau order bantuan tugas/proyek:\n\n` +
         orderIdLine +
         `• Nama Klien  : ${taskForm.name || "..."}\n` +
+        `• Kontak WA   : ${taskForm.contact || "..."}\n` +
         `• Kategori    : ${taskForm.category}\n` +
         `• Format File : ${taskForm.outputFormat || "..."}\n` +
         `• Deadline    : ${deadlineFormatted}\n` +
@@ -182,6 +187,7 @@ export function OrderGeneratorSection() {
         `Halo Tim bantuiin.id, saya mau order bantuan servis laptop:\n\n` +
         orderIdLine +
         `• Nama Klien  : ${hardwareForm.name || "..."}\n` +
+        `• Kontak WA   : ${hardwareForm.contact || "..."}\n` +
         `• Kendala/Item: ${hardwareForm.issue}\n` +
         `• Tipe Laptop : ${hardwareForm.laptopModel || "..."}\n` +
         `• Penyerahan  : ${hardwareForm.deliveryMethod}\n` +
@@ -207,6 +213,7 @@ export function OrderGeneratorSection() {
       if (orderType === "task") {
         result = await createDigitalTaskOrder({
           name: taskForm.name,
+          contact: taskForm.contact,
           category: taskForm.category,
           outputFormat: taskForm.outputFormat,
           instructions: taskForm.instructions,
@@ -221,6 +228,7 @@ export function OrderGeneratorSection() {
       } else {
         result = await createHardwareServiceOrder({
           name: hardwareForm.name,
+          contact: hardwareForm.contact,
           issue: hardwareForm.issue,
           laptopModel: hardwareForm.laptopModel,
           deliveryMethod: hardwareForm.deliveryMethod,
@@ -238,6 +246,13 @@ export function OrderGeneratorSection() {
         setErrorMessage(result.error || "Gagal memvalidasi pesanan");
         setIsSubmitting(false);
         return;
+      }
+
+      setPersistedToDb(result.persistedToDatabase);
+      if (result.warning) {
+        setWarningMessage(result.warning);
+      } else {
+        setWarningMessage(null);
       }
 
       const generatedCode = result.orderCode;
@@ -333,16 +348,32 @@ export function OrderGeneratorSection() {
 
             {/* Registered Order Code Banner */}
             {registeredOrderCode && (
-              <div className="mb-6 p-4 border-2 border-black rounded-lg bg-emerald-100 text-emerald-950 flex items-center justify-between gap-3 text-xs sm:text-sm font-bold shadow-neo-sm">
+              <div
+                className={`mb-6 p-4 border-2 border-black rounded-lg flex items-center justify-between gap-3 text-xs sm:text-sm font-bold shadow-neo-sm ${
+                  persistedToDb !== false
+                    ? "bg-emerald-100 text-emerald-950"
+                    : "bg-amber-100 text-amber-950"
+                }`}
+              >
                 <div className="flex items-center gap-2">
                   <Check className="h-5 w-5 text-emerald-700" />
-                  <span>Pesanan berhasil tercatat di antrean sistem:</span>
+                  <span>
+                    {persistedToDb !== false
+                      ? "Pesanan berhasil tercatat di antrean sistem:"
+                      : (warningMessage || "Pesanan dialihkan langsung ke WhatsApp Admin sebagai draf:")}
+                  </span>
                   <span className="font-mono bg-white px-2 py-0.5 border border-black rounded font-black text-black">
                     {registeredOrderCode}
                   </span>
                 </div>
-                <span className="neo-tag bg-neo-lime text-black font-mono text-[10px]">
-                  TERSIMPAN
+                <span
+                  className={`neo-tag font-mono text-[10px] ${
+                    persistedToDb !== false
+                      ? "bg-neo-lime text-black"
+                      : "bg-neo-yellow text-black"
+                  }`}
+                >
+                  {persistedToDb !== false ? "TERSIMPAN" : "DRAF OFFLINE"}
                 </span>
               </div>
             )}
@@ -354,16 +385,31 @@ export function OrderGeneratorSection() {
               <div className="lg:col-span-7 space-y-4">
                 {orderType === "task" ? (
                   <>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-800 mb-1">
-                        Nama Panggilan / Alias *
-                      </label>
-                      <input
-                        type="text"
-                        value={taskForm.name}
-                        onChange={(e) => setTaskForm({ ...taskForm, name: e.target.value })}
-                        className="w-full px-3.5 py-2.5 text-sm font-medium border-2 border-black rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-neo-lime"
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-800 mb-1">
+                          Nama Panggilan / Alias *
+                        </label>
+                        <input
+                          type="text"
+                          value={taskForm.name}
+                          onChange={(e) => setTaskForm({ ...taskForm, name: e.target.value })}
+                          className="w-full px-3.5 py-2.5 text-sm font-medium border-2 border-black rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-neo-lime"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-800 mb-1">
+                          Nomor WhatsApp Anda *
+                        </label>
+                        <input
+                          type="tel"
+                          value={taskForm.contact}
+                          onChange={(e) => setTaskForm({ ...taskForm, contact: e.target.value })}
+                          placeholder="081234567890"
+                          className="w-full px-3.5 py-2.5 text-sm font-mono font-medium border-2 border-black rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-neo-lime"
+                        />
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -563,18 +609,35 @@ export function OrderGeneratorSection() {
                   </>
                 ) : (
                   <>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-800 mb-1">
-                        Nama Panggilan / Alias *
-                      </label>
-                      <input
-                        type="text"
-                        value={hardwareForm.name}
-                        onChange={(e) =>
-                          setHardwareForm({ ...hardwareForm, name: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 text-sm font-medium border-2 border-black rounded-lg bg-white focus:outline-none"
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-800 mb-1">
+                          Nama Panggilan / Alias *
+                        </label>
+                        <input
+                          type="text"
+                          value={hardwareForm.name}
+                          onChange={(e) =>
+                            setHardwareForm({ ...hardwareForm, name: e.target.value })
+                          }
+                          className="w-full px-3.5 py-2.5 text-sm font-medium border-2 border-black rounded-lg bg-white focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-800 mb-1">
+                          Nomor WhatsApp Anda *
+                        </label>
+                        <input
+                          type="tel"
+                          value={hardwareForm.contact}
+                          onChange={(e) =>
+                            setHardwareForm({ ...hardwareForm, contact: e.target.value })
+                          }
+                          placeholder="081234567890"
+                          className="w-full px-3.5 py-2.5 text-sm font-mono font-medium border-2 border-black rounded-lg bg-white focus:outline-none"
+                        />
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

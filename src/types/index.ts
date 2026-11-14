@@ -222,3 +222,20 @@ export interface QuotationRecord {
   notes?: string | null;
   created_at: string;
 }
+
+export type PaymentType = "dp" | "full" | "final";
+export type PaymentStatus = "pending" | "verified" | "rejected";
+
+export interface PaymentRecord {
+  id: string;
+  order_id: string;
+  quotation_id?: string | null;
+  payment_type: PaymentType;
+  amount: number;
+  payment_method: string;
+  proof_url?: string | null;
+  status: PaymentStatus;
+  verified_by?: string | null;
+  verified_at?: string | null;
+  created_at: string;
+}

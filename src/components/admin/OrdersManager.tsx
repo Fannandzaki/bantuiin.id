@@ -1,12 +1,17 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { AdminOrder, OrderStatus, OrderType } from "@/types";
+import { AdminOrder, OrderStatus, OrderType, PaymentRecord, PaymentType } from "@/types";
 import {
   updateOrderStatusAction,
   verifyPriorityAction,
   createQuotationAction,
 } from "@/app/actions/admin-orders";
+import {
+  getOrderPayments,
+  recordPaymentAction,
+  verifyPaymentAction,
+} from "@/app/actions/payments";
 import { formatRupiah } from "@/lib/utils";
 import {
   calculateOrderPricing,
@@ -28,6 +33,8 @@ import {
   Calculator,
   Send,
   Check,
+  CreditCard,
+  Plus,
 } from "lucide-react";
 
 interface OrdersManagerProps {
@@ -59,6 +66,15 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
   const [adminAdjReason, setAdminAdjReason] = useState("");
   const [isCreatingQuotation, setIsCreatingQuotation] = useState(false);
   const [quotationCopied, setQuotationCopied] = useState(false);
+
+  // Payment Management State
+  const [orderPayments, setOrderPayments] = useState<PaymentRecord[]>([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [newPayType, setNewPayType] = useState<PaymentType>("dp");
+  const [newPayAmount, setNewPayAmount] = useState<number>(50000);
+  const [newPayMethod, setNewPayMethod] = useState("QRIS");
+  const [isRecordingPayment, setIsRecordingPayment] = useState(false);
+  const [isVerifyingPaymentId, setIsVerifyingPaymentId] = useState<string | null>(null);
 
   const statusOptions: { value: OrderStatus; label: string }[] = [
     { value: "new_inquiry", label: "Inquiry Baru" },
@@ -96,6 +112,16 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
     setAdminAdjReason("");
     setActionSuccess(null);
     setActionError(null);
+
+    const suggested = Math.round((order.total_price || 100000) * 0.5);
+    setNewPayAmount(suggested);
+    setNewPayType("dp");
+    setNewPayMethod("QRIS");
+
+    setPaymentsLoading(true);
+    getOrderPayments(order.id)
+      .then(setOrderPayments)
+      .finally(() => setPaymentsLoading(false));
   };
 
   // Live calculation for quotation builder
@@ -282,6 +308,73 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
       }
     } else {
       setActionError(result.error || "Gagal membuat quotation");
+    }
+  };
+
+  const totalVerifiedPaid = useMemo(() => {
+    return orderPayments
+      .filter((p) => p.status === "verified")
+      .reduce((sum, p) => sum + p.amount, 0);
+  }, [orderPayments]);
+
+  const remainingBalance = useMemo(() => {
+    const total = selectedOrder?.total_price || modalPricingCalc?.finalPrice || 0;
+    return Math.max(0, total - totalVerifiedPaid);
+  }, [selectedOrder, modalPricingCalc, totalVerifiedPaid]);
+
+  const handleRecordPayment = async () => {
+    if (!selectedOrder) return;
+    if (newPayAmount <= 0) {
+      setActionError("Nominal pembayaran harus lebih dari 0.");
+      return;
+    }
+
+    setIsRecordingPayment(true);
+    setActionSuccess(null);
+    setActionError(null);
+
+    const res = await recordPaymentAction({
+      orderId: selectedOrder.id,
+      paymentType: newPayType,
+      amount: newPayAmount,
+      paymentMethod: newPayMethod,
+    });
+
+    setIsRecordingPayment(false);
+
+    if (res.success && res.payment) {
+      setActionSuccess(`Pembayaran ${newPayType.toUpperCase()} berhasil dicatat.`);
+      setOrderPayments((prev) => [res.payment!, ...prev]);
+      setTimeout(() => setActionSuccess(null), 3000);
+    } else {
+      setActionError(res.error || "Gagal mencatat pembayaran.");
+    }
+  };
+
+  const handleVerifyPayment = async (paymentId: string, decision: "verified" | "rejected") => {
+    if (!selectedOrder) return;
+    setIsVerifyingPaymentId(paymentId);
+    setActionSuccess(null);
+    setActionError(null);
+
+    const res = await verifyPaymentAction(paymentId, decision, selectedOrder.id);
+    setIsVerifyingPaymentId(null);
+
+    if (res.success) {
+      setActionSuccess(`Pembayaran berhasil ${decision === "verified" ? "diverifikasi" : "ditolak"}.`);
+      setOrderPayments((prev) =>
+        prev.map((p) => (p.id === paymentId ? { ...p, status: decision } : p))
+      );
+      if (decision === "verified" && selectedOrder.status === "awaiting_dp") {
+        setOrders((prev) =>
+          prev.map((o) => (o.id === selectedOrder.id ? { ...o, status: "in_progress" } : o))
+        );
+        setSelectedOrder((prev) => (prev ? { ...prev, status: "in_progress" } : null));
+        setNewStatus("in_progress");
+      }
+      setTimeout(() => setActionSuccess(null), 3000);
+    } else {
+      setActionError(res.error || "Gagal memverifikasi status pembayaran.");
     }
   };
 
@@ -473,7 +566,7 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
                       </td>
                       <td className="p-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="inline-flex items-center gap-1.5">
-                          {order.customer_contact && (
+                          {order.customer_contact && order.customer_contact.replace(/[^0-9]/g, "").length >= 9 ? (
                             <a
                               href={`https://wa.me/${order.customer_contact.replace(/[^0-9]/g, "")}`}
                               target="_blank"
@@ -484,7 +577,7 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
                               <MessageCircle className="h-3 w-3" />
                               <span className="hidden sm:inline">WhatsApp</span>
                             </a>
-                          )}
+                          ) : null}
                           <button
                             type="button"
                             onClick={() => handleOpenDetail(order)}
@@ -771,6 +864,195 @@ export function OrdersManager({ initialOrders }: OrdersManagerProps) {
                       </>
                     )}
                   </button>
+                </div>
+              </div>
+
+              {/* Payment Records & Balance Management */}
+              <div className="pt-4 border-t-2 border-black space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-emerald-600" />
+                    <h4 className="font-heading font-black text-sm text-black uppercase tracking-tight">
+                      Riwayat &amp; Verifikasi Pembayaran
+                    </h4>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-mono font-black">
+                    <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 border border-emerald-400 rounded">
+                      Terbayar: {formatRupiah(totalVerifiedPaid)}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 border rounded ${
+                        remainingBalance > 0
+                          ? "bg-amber-100 text-amber-900 border-amber-400"
+                          : "bg-blue-100 text-blue-900 border-blue-400"
+                      }`}
+                    >
+                      Sisa: {formatRupiah(remainingBalance)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Payment History List */}
+                {paymentsLoading ? (
+                  <div className="p-4 flex items-center justify-center gap-2 text-xs text-slate-500 font-mono">
+                    <Loader2 className="h-4 w-4 animate-spin text-black" />
+                    <span>Memuat riwayat pembayaran...</span>
+                  </div>
+                ) : orderPayments.length === 0 ? (
+                  <div className="p-3 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg text-center text-xs text-slate-600 font-mono">
+                    Belum ada riwayat pembayaran tercatat untuk pesanan ini.
+                  </div>
+                ) : (
+                  <div className="border-2 border-black rounded-lg overflow-hidden bg-white">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs font-mono">
+                        <thead className="bg-slate-100 border-b-2 border-black text-[11px] font-black uppercase text-slate-700">
+                          <tr>
+                            <th className="px-3 py-2 text-left">Tipe</th>
+                            <th className="px-3 py-2 text-left">Metode</th>
+                            <th className="px-3 py-2 text-right">Nominal</th>
+                            <th className="px-3 py-2 text-center">Status</th>
+                            <th className="px-3 py-2 text-center">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {orderPayments.map((pay) => (
+                            <tr key={pay.id} className="hover:bg-slate-50">
+                              <td className="px-3 py-2 font-bold uppercase text-slate-900">
+                                {pay.payment_type}
+                              </td>
+                              <td className="px-3 py-2 text-slate-600">
+                                {pay.payment_method || "-"}
+                              </td>
+                              <td className="px-3 py-2 text-right font-black text-black">
+                                {formatRupiah(pay.amount)}
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                <span
+                                  className={`inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                                    pay.status === "verified"
+                                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                                      : pay.status === "pending"
+                                      ? "bg-amber-100 text-amber-800 border border-amber-300"
+                                      : "bg-red-100 text-red-800 border border-red-300"
+                                  }`}
+                                >
+                                  {pay.status === "verified"
+                                    ? "Terverifikasi"
+                                    : pay.status === "pending"
+                                    ? "Menunggu"
+                                    : "Ditolak"}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                {pay.status === "pending" ? (
+                                  <div className="flex items-center justify-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      disabled={isVerifyingPaymentId === pay.id}
+                                      onClick={() => handleVerifyPayment(pay.id, "verified")}
+                                      className="px-2 py-1 bg-emerald-400 hover:bg-emerald-500 text-black border border-black rounded text-[10px] font-black flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                    >
+                                      {isVerifyingPaymentId === pay.id ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        "Verifikasi"
+                                      )}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={isVerifyingPaymentId === pay.id}
+                                      onClick={() => handleVerifyPayment(pay.id, "rejected")}
+                                      className="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 border border-red-400 rounded text-[10px] font-black cursor-pointer disabled:opacity-50"
+                                    >
+                                      Tolak
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400 font-mono">-</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Form Catat Pembayaran Baru */}
+                <div className="p-3 bg-slate-50 border-2 border-black rounded-lg space-y-2">
+                  <div className="flex items-center gap-1 text-[11px] font-black uppercase text-slate-800">
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Catat Pembayaran Masuk (Klien Telah Transfer):</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
+                        Tipe Pembayaran
+                      </label>
+                      <select
+                        value={newPayType}
+                        onChange={(e) => setNewPayType(e.target.value as PaymentType)}
+                        className="w-full px-2.5 py-1.5 text-xs font-bold border-2 border-black rounded bg-white"
+                      >
+                        <option value="dp">DP (Down Payment)</option>
+                        <option value="final">Pelunasan</option>
+                        <option value="full">Bayar Lunas Langsung</option>
+                        <option value="additional">Biaya Tambahan</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
+                        Nominal (Rp)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={5000}
+                        value={newPayAmount}
+                        onChange={(e) => setNewPayAmount(Number(e.target.value) || 0)}
+                        className="w-full px-2.5 py-1.5 text-xs font-black border-2 border-black rounded bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
+                        Metode Transfer
+                      </label>
+                      <select
+                        value={newPayMethod}
+                        onChange={(e) => setNewPayMethod(e.target.value)}
+                        className="w-full px-2.5 py-1.5 text-xs font-bold border-2 border-black rounded bg-white"
+                      >
+                        <option value="QRIS">QRIS</option>
+                        <option value="Transfer BCA">Transfer BCA</option>
+                        <option value="GoPay">GoPay</option>
+                        <option value="SeaBank">SeaBank</option>
+                        <option value="Dana">Dana</option>
+                        <option value="Lainnya">Lainnya</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      disabled={isRecordingPayment || newPayAmount <= 0}
+                      onClick={handleRecordPayment}
+                      className="px-4 py-1.5 neo-btn-lime text-xs font-black flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      {isRecordingPayment ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-black" />
+                          <span>Menyimpan...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="h-3.5 w-3.5" />
+                          <span>Catat Pembayaran</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
 

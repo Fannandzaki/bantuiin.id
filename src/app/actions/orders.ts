@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   digitalTaskOrderSchema,
   hardwareServiceOrderSchema,
+  normalizeIndonesianPhone,
   type DigitalTaskOrderValues,
   type HardwareServiceOrderValues,
 } from "@/lib/validations/order";
@@ -34,7 +35,10 @@ async function getClientIp(): Promise<string> {
 
 export interface CreateOrderResult {
   success: boolean;
-  orderCode?: string;
+  persistedToDatabase: boolean;
+  orderCode: string;
+  orderStatus?: "new_inquiry" | "offline_draft";
+  warning?: string;
   error?: string;
   priorityStatus?: PriorityStatus;
   totalSurchargePercent?: number;
@@ -52,6 +56,8 @@ export async function createDigitalTaskOrder(
   if (!rateLimit.success) {
     return {
       success: false,
+      persistedToDatabase: false,
+      orderCode: "",
       error:
         "Terlalu banyak permintaan pemesanan dalam waktu singkat. Mohon tunggu 1 menit.",
     };
@@ -61,12 +67,15 @@ export async function createDigitalTaskOrder(
   if (!validation.success) {
     return {
       success: false,
+      persistedToDatabase: false,
+      orderCode: "",
       error: validation.error.errors[0]?.message || "Data formulir tidak valid",
     };
   }
 
   const data = validation.data;
   let orderCode = generateOrderCode();
+  const normalizedContact = normalizeIndonesianPhone(data.contact);
 
   // Calculate priority & after-hours surcharge fields
   let requestedDeadlineIso: string | null = null;
@@ -107,18 +116,18 @@ export async function createDigitalTaskOrder(
       process.env.NEXT_PUBLIC_SUPABASE_URL &&
       !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder-id");
 
-    if (isConfigured) {
-      let inserted = false;
-      let attempts = 0;
-      let currentCode = orderCode;
+    let inserted = false;
+    let attempts = 0;
+    let currentCode = orderCode;
 
+    if (isConfigured) {
       while (!inserted && attempts < 3) {
         attempts++;
         const { error } = await supabase.from("orders").insert({
           order_code: currentCode,
           order_type: "digital_task",
           customer_name: data.name,
-          customer_contact: data.contact || "WhatsApp Direct",
+          customer_contact: normalizedContact,
           service_category: data.category,
           format_output: data.outputFormat,
           instructions: data.instructions,
@@ -144,17 +153,38 @@ export async function createDigitalTaskOrder(
       }
     }
 
-    return {
-      success: true,
-      orderCode,
-      priorityStatus,
-      totalSurchargePercent,
-    };
+    if (inserted) {
+      return {
+        success: true,
+        persistedToDatabase: true,
+        orderCode,
+        orderStatus: "new_inquiry",
+        priorityStatus,
+        totalSurchargePercent,
+      };
+    } else {
+      const draftCode = `DRAFT-${orderCode.split("-").slice(1).join("-")}`;
+      return {
+        success: true,
+        persistedToDatabase: false,
+        orderCode: draftCode,
+        orderStatus: "offline_draft",
+        warning:
+          "Koneksi database sedang sibuk. Format pesanan dialihkan langsung ke WhatsApp Admin sebagai draf.",
+        priorityStatus,
+        totalSurchargePercent,
+      };
+    }
   } catch (err) {
     console.error("Unexpected error creating order:", err);
+    const draftCode = `DRAFT-${orderCode.split("-").slice(1).join("-")}`;
     return {
       success: true,
-      orderCode,
+      persistedToDatabase: false,
+      orderCode: draftCode,
+      orderStatus: "offline_draft",
+      warning:
+        "Koneksi server database mengalami kendala. Pesanan dialihkan langsung ke WhatsApp Admin sebagai draf.",
       priorityStatus,
       totalSurchargePercent,
     };
@@ -173,6 +203,8 @@ export async function createHardwareServiceOrder(
   if (!rateLimit.success) {
     return {
       success: false,
+      persistedToDatabase: false,
+      orderCode: "",
       error:
         "Terlalu banyak permintaan pemesanan dalam waktu singkat. Mohon tunggu 1 menit.",
     };
@@ -182,12 +214,15 @@ export async function createHardwareServiceOrder(
   if (!validation.success) {
     return {
       success: false,
+      persistedToDatabase: false,
+      orderCode: "",
       error: validation.error.errors[0]?.message || "Data formulir tidak valid",
     };
   }
 
   const data = validation.data;
   let orderCode = generateOrderCode();
+  const normalizedContact = normalizeIndonesianPhone(data.contact);
 
   let requestedDeadlineIso: string | null = null;
   let requestedStartTimeIso: string | null = null;
@@ -227,18 +262,18 @@ export async function createHardwareServiceOrder(
       process.env.NEXT_PUBLIC_SUPABASE_URL &&
       !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder-id");
 
-    if (isConfigured) {
-      let inserted = false;
-      let attempts = 0;
-      let currentCode = orderCode;
+    let inserted = false;
+    let attempts = 0;
+    let currentCode = orderCode;
 
+    if (isConfigured) {
       while (!inserted && attempts < 3) {
         attempts++;
         const { error } = await supabase.from("orders").insert({
           order_code: currentCode,
           order_type: "hardware_service",
           customer_name: data.name,
-          customer_contact: data.contact || "WhatsApp Direct",
+          customer_contact: normalizedContact,
           service_category: data.issue,
           instructions: `Servis Laptop: ${data.issue}`,
           deadline: data.expectedCompletion,
@@ -268,17 +303,38 @@ export async function createHardwareServiceOrder(
       }
     }
 
-    return {
-      success: true,
-      orderCode,
-      priorityStatus,
-      totalSurchargePercent,
-    };
+    if (inserted) {
+      return {
+        success: true,
+        persistedToDatabase: true,
+        orderCode,
+        orderStatus: "new_inquiry",
+        priorityStatus,
+        totalSurchargePercent,
+      };
+    } else {
+      const draftCode = `DRAFT-${orderCode.split("-").slice(1).join("-")}`;
+      return {
+        success: true,
+        persistedToDatabase: false,
+        orderCode: draftCode,
+        orderStatus: "offline_draft",
+        warning:
+          "Koneksi database sedang sibuk. Format pesanan dialihkan langsung ke WhatsApp Admin sebagai draf.",
+        priorityStatus,
+        totalSurchargePercent,
+      };
+    }
   } catch (err) {
     console.error("Unexpected error creating hardware order:", err);
+    const draftCode = `DRAFT-${orderCode.split("-").slice(1).join("-")}`;
     return {
       success: true,
-      orderCode,
+      persistedToDatabase: false,
+      orderCode: draftCode,
+      orderStatus: "offline_draft",
+      warning:
+        "Koneksi server database mengalami kendala. Pesanan dialihkan langsung ke WhatsApp Admin sebagai draf.",
       priorityStatus,
       totalSurchargePercent,
     };
